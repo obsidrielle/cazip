@@ -115,7 +115,6 @@ struct ZipCodec {
     password: Option<String>,
 }
 
-
 impl LosslessCodec for ZipCodec {
     fn extract(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
         let mut archive = ZipArchive::new(SyncFile::open(source[0])?)?;
@@ -311,11 +310,11 @@ impl Cli {
                     method: self.method.unwrap().clone(),
                 })
             }
-            _ => {
-                Box::new(ZipCodec {
-                    password: self.password.clone(),
-                    method: self.method.unwrap().clone(),
-                })
+            Format::Gz => {
+                Box::new(GzipCodec{})
+            }
+            Format::SevenZ => {
+                Box::new(SevenZCodec{})
             }
         };
 
@@ -325,63 +324,31 @@ impl Cli {
     }
 }
 
-fn zip_extract(
-    source: &Path,
-    target: &Path,
-) -> ZipResult<()> {
-    let mut archive = ZipArchive::new(File::open(source)?)?;
-    let mut prefix = PathBuf::from(target);
+struct GzipCodec;
 
-    info!("start extracting...");
-
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
-        let mut path = prefix.clone();
-
-        let outpath  = match file.enclosed_name() {
-            Some(path) => path,
-            None => continue,
-        };
-
-        info!("extracting: {}", outpath.display());
-
-        path.push(outpath);
-
-        if file.is_dir() {
-            fs::create_dir_all(&path)?;
-        } else {
-            if let Some(p) = path.parent() {
-                if !p.exists() {
-                    fs::create_dir_all(p)?
-                }
-            }
-
-            let mut outfile = File::create(&path)?;
-            io::copy(&mut file, &mut outfile)?;
-        }
+impl LosslessCodec for GzipCodec {
+    fn extract(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        todo!()
     }
 
-    Ok(())
-}
+    fn compress(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        let source = source[0];
 
-fn gzip(
-    source: &Path,
-    target: &Path,
-) -> ZipResult<()> {
-    let f = File::create(target)?;
-    let mut s = File::open(source)?;
+        let f = File::create(target)?;
+        let mut s = File::open(source)?;
 
-    let mut gz = GzBuilder::new()
-        .filename(source.file_name().unwrap().to_str().unwrap())
-        .write(f, Compression::default());
+        let mut gz = GzBuilder::new()
+            .filename(source.file_name().unwrap().to_str().unwrap())
+            .write(f, Compression::default());
 
-    let mut buffer = vec![];
-    s.read_to_end(&mut buffer)?;
+        let mut buffer = vec![];
+        s.read_to_end(&mut buffer)?;
 
-    gz.write_all(&buffer)?;
-    gz.finish()?;
+        gz.write_all(&buffer)?;
+        gz.finish()?;
 
-    Ok(())
+        Ok(())
+    }
 }
 
 // fn gzip_extract(
@@ -434,4 +401,16 @@ fn tar_extract(
     }
 
     Ok(())
+}
+
+struct SevenZCodec;
+
+impl LosslessCodec for SevenZCodec {
+    fn extract(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        todo!()
+    }
+
+    fn compress(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        todo!()
+    }
 }
