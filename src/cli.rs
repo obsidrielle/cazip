@@ -4,12 +4,12 @@ use clap::Parser;
 use std::ffi::OsString;
 use std::{fs, io, path};
 use std::fs::File;
-use std::io::{Read, Seek, Write};
+use std::io::{BufReader, Read, Seek, Write};
 use std::iter::Zip;
 use std::path::{Path, PathBuf};
 use std::ptr::read;
 use std::time::Instant;
-use flate2::{Compression, GzBuilder};
+use flate2::{bufread, Compression, GzBuilder};
 use log::{debug, info};
 use sync_file::SyncFile;
 use walkdir::{DirEntry, WalkDir};
@@ -328,7 +328,13 @@ struct GzipCodec;
 
 impl LosslessCodec for GzipCodec {
     fn extract(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
-        todo!()
+        let reader = BufReader::new(File::open(source[0])?);
+        let mut outfile = File::create(&target)?;
+        let mut decoder = bufread::GzDecoder::new(reader);
+
+        io::copy(&mut decoder, &mut outfile)?;
+
+        Ok(())
     }
 
     fn compress(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
@@ -407,10 +413,11 @@ struct SevenZCodec;
 
 impl LosslessCodec for SevenZCodec {
     fn extract(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
-        todo!()
+
     }
 
     fn compress(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
         todo!()
     }
 }
+
