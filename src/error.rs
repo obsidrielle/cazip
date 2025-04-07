@@ -10,4 +10,8 @@ pub enum ZipError {
     StripPrefixError(#[from] std::path::StripPrefixError),
     #[error("{0}")]
     AnyhowError(#[from] anyhow::Error),
+    #[error("{0}")]
+    SevenZError(#[from] sevenz_rust2::Error),
+    #[error("{0}")]
+    XZ2Error(#[from] xz2::stream::Error),
 }

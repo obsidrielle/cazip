@@ -6,7 +6,7 @@ FORMAT = zip
 METHOD = zip
 PASSWORD = mypassword
 
-CA_ZIP = .\target\debug\ca-zip.exe
+CA_ZIP = ./target/debug/ca-zip.exe
 
 all: compress decompress
 
@@ -21,4 +21,4 @@ clean:
 	rm -f $(SOURCE)
 
 test:
-	cargo build && .\target\debug\ca-zip.exe --help
+	cargo build && ./target/debug/ca-zip --help

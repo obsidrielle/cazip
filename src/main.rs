@@ -1,12 +1,8 @@
-#![feature(absolute_path)]
-
 use clap::Parser;
 
-mod huffman;
-mod bit;
-mod lz77;
 mod cli;
 mod error;
+
 // mod deflate;
 
 macro_rules! finish_try {
@@ -18,7 +14,7 @@ macro_rules! finish_try {
     };
 }
 
-type ZipResult<T> = Result<T, error::ZipError>;
+type ZipResult<T> = anyhow::Result<T>;
 
 fn main() {
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();

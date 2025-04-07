@@ -1,21 +1,28 @@
 use crate::ZipResult;
 use anyhow::Context;
 use clap::Parser;
-use std::ffi::OsString;
-use std::{fs, io, path};
+use std::ffi::{OsStr, OsString};
+use std::{fs, io, path, thread};
 use std::fs::File;
-use std::io::{BufReader, Read, Seek, Write};
+use std::io::{BufRead, BufReader, Read, Seek, Write};
 use std::iter::Zip;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::ptr::read;
 use std::time::Instant;
 use flate2::{bufread, Compression, GzBuilder};
-use log::{debug, info};
+use log::{debug, error, info};
 use sync_file::SyncFile;
 use walkdir::{DirEntry, WalkDir};
 use zip::write::{FileOptions, SimpleFileOptions};
 use zip::{AesMode, CompressionMethod, ZipArchive, ZipWriter};
 use rayon::prelude::*;
+use sevenz_rust2;
+use sevenz_rust2::{SevenZArchiveEntry, SevenZWriter};
+use tar::{Archive, Builder};
+use xz2::read::XzDecoder;
+use xz2::stream::{Action, Check, MtStreamBuilder, Stream};
+use xz2::write::XzEncoder;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -24,7 +31,7 @@ pub struct Cli {
     target: PathBuf,
     /// The name of source files with suffix and archives.
     source: Vec<PathBuf>,
-    /// format: zip, gz
+    /// format: zip, gz, 7z, xz
     #[arg(short, long)]
     format: Option<Format>,
     /// Compression algorithm: deflate, deflate64, bzip2, zstd
@@ -33,10 +40,18 @@ pub struct Cli {
     /// password
     #[arg(short, long)]
     password: Option<String>,
+    /// Extract mode
     #[arg(short, long)]
     unzip: bool,
+    /// Enable debug output (extra messages)
     #[arg(short, long)]
     debug: bool,
+    /// Use command line tools instead of Rust backend
+    #[arg(short = 'e', long)]
+    use_external: bool,
+    /// Volume size in MB for split archives (only for zip and 7z)
+    #[arg(short = 'v', long)]
+    volume_size: Option<usize>,
 }
 
 #[derive(Clone, Copy)]
@@ -44,6 +59,13 @@ enum Format {
     Zip,
     Gz,
     SevenZ,
+    Xz,
+}
+
+impl Default for Format {
+    fn default() -> Self {
+        Self::Zip
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -53,12 +75,19 @@ enum Method {
     Zstd,
 }
 
+impl Default for Method {
+    fn default() -> Self {
+        Self::Zstd
+    }
+}
+
 impl From<String> for Format {
     fn from(value: String) -> Self {
         match value.as_str() {
             "zip" => Self::Zip,
             "Gz" => Self::Gz,
             "7z" => Self::SevenZ,
+            "xz" => Self::Xz,
             _ => Self::Zip,
         }
     }
@@ -90,6 +119,7 @@ impl Into<&str> for Format {
             Format::Zip => "zip",
             Format::Gz => "gzip",
             Format::SevenZ => "7z",
+            Format::Xz => "xz",
         }
     }
 }
@@ -260,10 +290,12 @@ impl ZipCodec {
 
 
 impl Cli {
-    /// identify the format unless it has been specified.
     fn identify_format(&mut self) {
-        if self.format.is_none() {
+        if self.format.is_none() && !self.unzip {
             self.format = Some(Format::from(self.target.extension().unwrap().to_string_lossy().to_string()));
+        }
+        if self.format.is_none() && self.unzip {
+            self.format = Some(Format::from(self.source[0].extension().unwrap().to_string_lossy().to_string()));
         }
     }
 
@@ -302,8 +334,9 @@ impl Cli {
 
         let source = self.source.iter().map(|e| e.as_path()).collect::<Vec<_>>();
         let target = self.target.as_path();
+        let format = self.format.unwrap();
 
-        let mut codec: Box<dyn LosslessCodec> = match self.format.unwrap() {
+        let mut codec: Box<dyn LosslessCodec> = match format.clone() {
             Format::Zip => {
                 Box::new(ZipCodec {
                     password: self.password.clone(),
@@ -314,12 +347,28 @@ impl Cli {
                 Box::new(GzipCodec{})
             }
             Format::SevenZ => {
-                Box::new(SevenZCodec{})
+                Box::new(SevenZCodec{
+                    password: self.password.clone(),
+                })
+            }
+            Format::Xz => {
+                Box::new(XZCodec {
+                    compression_level: 0,
+                    threads: 12,
+                })
             }
         };
 
-        codec.compress(source, target)?;
+        if self.use_external {
+            codec = Box::new(CommandLineCodec::new(
+                format,
+                self.method,
+                self.password.clone(),
+                self.volume_size,
+            ))
+        }
 
+        if !self.unzip { codec.compress(source, target)?; } else { codec.extract(source, target)?; }
         Ok(())
     }
 }
@@ -357,67 +406,440 @@ impl LosslessCodec for GzipCodec {
     }
 }
 
-// fn gzip_extract(
-//     source: &Path,
-//     target: &Path,
-// ) -> ZipResult<()> {
-//
-// }
-
-fn tar_append<T>(
-    builder: &mut tar::Builder<T>,
-    source: &Path,
-) -> ZipResult<()> where T: Write + Seek {
-    match source.is_dir() {
-        true => builder.append_dir(source, source)?,
-        false => builder.append_path(source)?,
-    }
-
-    Ok(())
+struct SevenZCodec {
+    password: Option<String>,
 }
-
-fn tar_extract(
-    source: &Path,
-    target: &Path,
-) -> ZipResult<()> {
-    let mut archive = tar::Archive::new(File::create(source)?);
-    let prefix = PathBuf::from(target);
-
-    for file in archive.entries()? {
-        let mut f = file?;
-        let path = f.path()?;
-
-        let mut outpath = prefix.clone();
-        outpath.push(&path);
-
-        info!("extracting: {}", path.display());
-
-        if path.is_dir() {
-            fs::create_dir_all(&outpath)?;
-        } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    fs::create_dir_all(p)?;
-                }
-            }
-
-            let mut outfile = File::create(&outpath)?;
-            io::copy(&mut f, &mut outfile)?;
-        }
-    }
-
-    Ok(())
-}
-
-struct SevenZCodec;
 
 impl LosslessCodec for SevenZCodec {
     fn extract(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        match self.password {
+            Some(ref password) => {
+                todo!()
+            }
+            None => {
+                todo!()
+            }
 
+        }
+
+        Ok(())
     }
 
     fn compress(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
-        todo!()
+        let target = ensure_extension(target, "7z");
+        let mut sz_writer = SevenZWriter::create(target.as_path())?;
+
+        debug!("writing {:?}", source[0]);
+
+        let src = source[0];
+        let name = "sample".to_string();
+
+        sz_writer.push_archive_entry(
+            SevenZArchiveEntry::from_path(src, name),
+            Some(File::open(src)?),
+        )?;
+
+        let src = source[2];
+        let name = "sample/1.txt".to_string();
+
+        sz_writer.push_archive_entry(
+            SevenZArchiveEntry::from_path(src, name),
+            Some(File::open(src)?),
+        )?;
+
+        let src = source[1];
+        let name = "1.txt".to_string();
+
+        sz_writer.push_archive_entry(
+            SevenZArchiveEntry::from_path(src, name),
+            Some(File::open(src)?),
+        )?;
+
+        sz_writer.finish()?;
+        Ok(())
+    }
+}
+
+struct XZCodec {
+    compression_level: u32,
+    threads: u32,
+}
+
+impl XZCodec {
+    pub fn new(level: u32, threads: u32) -> Self {
+        Self {
+            compression_level: level.clamp(0, 9),
+            threads,
+        }
+    }
+}
+
+impl LosslessCodec for XZCodec {
+    fn extract(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        let tar_xz = SyncFile::open(source[0])?;
+        let tar = XzDecoder::new(tar_xz);
+        let mut archive = Archive::new(tar);
+
+        let time_start = Instant::now();
+
+        for entry_result in archive.entries()? {
+            let mut entry = entry_result?;
+            let entry_path = entry.path()?.into_owned();
+
+            info!("Extracting: {:?}", entry_path);
+
+            if let Err(e) = entry.unpack_in(target) {
+                eprintln!("Error extracting {:?}: {}", entry_path, e);
+            }
+        }
+
+        info!("Extraction process completed");
+        info!("Time costed: {:?} Millis, {:?} Secs", time_start.elapsed().as_millis(), time_start.elapsed().as_secs());
+        Ok(())
+    }
+
+    fn compress(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        let target_file = File::create(target)?;
+        info!("Creating target file: {:?}", target);
+
+        let mut mt_stream = MtStreamBuilder::new();
+        let _ = mt_stream
+            .threads(12)
+            .block_size(4 * 1024 * 1024)
+            .preset(self.compression_level);
+        let memusage = mt_stream.memusage();
+        info!("approximate mem usage: {:?} MB / {:?} GB", memusage as f64 / 1024.0 / 1024.0,
+            memusage as f64 / 1024.0 / 1024.0 / 1024.0);
+        info!("Using 12 threads");
+
+        let mt_stream = mt_stream.encoder()?;
+        info!("Compression level: {:?}", self.compression_level);
+
+        // let xz_encoder = XzEncoder::new_stream(target_file, mt_stream);
+        let xz_encoder = XzEncoder::new(target_file, 0);
+        let mut builder = Builder::new(xz_encoder);
+        info!("Creating XZ writer");
+
+        let time_start = Instant::now();
+
+        for source_path in source {
+            let name_in_archive = source_path.file_name().unwrap();
+
+            if source_path.is_dir() {
+                info!("Writing directory: {:?}", source_path);
+                builder.append_dir_all(name_in_archive, source_path).unwrap()
+            } else {
+                info!("Writing file: {:?}", source_path);
+                builder.append_path_with_name(source_path, name_in_archive).unwrap()
+            }
+        }
+
+        let finished = builder.into_inner()?;
+        finished.finish()?;
+
+        info!("Compress completed");
+        info!("Time costed: {:?} Millis, {:?} Secs", time_start.elapsed().as_millis(), time_start.elapsed().as_secs());
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+struct CommandLineCodec {
+    format: Format,
+    method: Option<Method>,
+    password: Option<String>,
+    // Just for Zip and 7z
+    volume_size: Option<usize>,
+}
+
+impl CommandLineCodec {
+    fn new(format: Format, method: Option<Method>, password: Option<String>, volume_size: Option<usize>) -> Self {
+        Self {
+            format,
+            method,
+            password,
+            volume_size,
+        }
+    }
+
+    fn build_path_args<'a>(paths: &'a [&'a Path]) -> Vec<&'a str> {
+        paths.iter().map(|p| p.to_str().unwrap()).collect()
+    }
+
+    fn parse_file_operations<P: AsRef<Path>>(paths: &[P]) -> Vec<String> {
+        let mut operations = Vec::new();
+
+        for path in paths {
+            let path_ref = path.as_ref();
+            if path_ref.is_dir() {
+                operations.push(format!("Writing directory: {:?}", path_ref));
+
+                if let Ok(entries) = fs::read_dir(path_ref) {
+                    for entry in entries.filter_map(Result::ok) {
+                        let entry_path = entry.path();
+                        let subpath_operations = Self::parse_file_operations(&[entry_path]);
+                        operations.extend(subpath_operations);
+                    }
+                }
+            } else {
+                operations.push(format!("Writing file: {:?}", path_ref));
+            }
+        }
+
+        operations
+    }
+
+    fn run_command_with_logging(mut cmd: Command) -> ZipResult<()> {
+        info!("Running command: {:?}", cmd);
+
+        let mut child = cmd
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+
+        let stdout_thread = thread::spawn(move || {
+            let reader = BufReader::new(stdout);
+
+            for line in reader.lines() {
+                info!("{}", line.unwrap())
+            }
+        });
+
+        let stderr_thread = thread::spawn(move || {
+            let reader = BufReader::new(stderr);
+
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    error!("{}", line);
+                }
+            }
+        });
+
+        let status = child.wait()?;
+
+        stdout_thread.join().unwrap();
+        stderr_thread.join().unwrap();
+
+        if !status.success() {
+            error!("Command failed with status: {}", status);
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Command failed with status: {}", status)
+            ).into());
+        }
+
+        Ok(())
+    }
+}
+
+impl LosslessCodec for CommandLineCodec {
+    fn extract(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        let start = Instant::now();
+
+        if !target.exists() {
+            fs::create_dir_all(target)?;
+        }
+
+        match self.format {
+            Format::Zip => {
+                let mut cmd = Command::new("unzip");
+
+                if let Some(ref pwd) = self.password {
+                    cmd.arg("-P").arg(pwd);
+                }
+
+                cmd.arg("-v");
+                cmd.arg("-o");
+                cmd.arg(source[0]);
+                cmd.arg("-d").arg(target);
+
+                Self::run_command_with_logging(cmd)?;
+            }
+            Format::SevenZ => {
+                let mut cmd = Command::new("7z");
+                cmd.arg("x");
+
+                if let Some(ref pwd) = self.password {
+                    cmd.arg("-p").arg(pwd);
+                }
+
+                cmd.arg("-mmt12");
+                cmd.arg("-y");
+                cmd.arg("-bb3");
+                cmd.arg(source[0]);
+                cmd.arg(format!("-o{:?}", target));
+
+                Self::run_command_with_logging(cmd)?;
+            }
+            Format::Xz => {
+                if source[0].extension().map_or(false, |ext| ext == "tar.xz" || ext == "txz")
+                    || source[0].to_string_lossy().ends_with(".tar.xz") {
+                    // For tar.xz, we can extract it directly
+                    let mut cmd = Command::new("tar");
+                    cmd.arg("-xvf");
+                    cmd.arg(source[0]);
+                    cmd.arg("-C").arg(target);
+
+                    Self::run_command_with_logging(cmd)?;
+                } else {
+                    // For no tar.xz, we should extract it, then check if it is tar
+                    let mut cmd = Command::new("xz");
+                    cmd.arg("-d");
+                    cmd.arg("-v");
+                    cmd.arg("-k");
+                    cmd.arg(source[0]);
+
+                    Self::run_command_with_logging(cmd)?;
+
+                    let source_stem = source[0].file_stem().unwrap();
+                    let source_dir = source[0].parent().unwrap();
+                    let uncompressed = source_dir.join(source_stem);
+
+                    if uncompressed.extension().map_or(false, |ext| ext == "tar")
+                        || uncompressed.to_string_lossy().ends_with(".tar") {
+                        let mut cmd = Command::new("tar");
+                        cmd.arg("-xvf");
+                        cmd.arg(&uncompressed);
+                        cmd.arg("-C").arg(target);
+
+                        Self::run_command_with_logging(cmd)?
+                    } else {
+                        // if no, just copy it
+                        let target_file = if target.is_dir() {
+                            target.join(source_stem)
+                        } else {
+                            target.to_path_buf()
+                        };
+
+                        info!("Copying uncompressed file to: {:?}", target_file);
+                        fs::copy(uncompressed, target_file)?;
+                    }
+                }
+            }
+            Format::Gz => {
+                todo!()
+            }
+        }
+
+        info!("Extraction completed in {:?} ms / {:?} s",
+            start.elapsed().as_millis(), start.elapsed().as_secs());
+        Ok(())
+    }
+
+    fn compress(&mut self, source: Vec<&Path>, target: &Path) -> ZipResult<()> {
+        let start = Instant::now();
+
+        if let Some(parent) = target.parent() {
+            if !parent.exists() {
+                fs::create_dir_all(parent)?;
+            }
+        }
+
+        match self.format {
+            Format::Zip => {
+                let mut cmd = Command::new("zip");
+                cmd.arg("-r");
+                cmd.arg("-v");
+
+                if let Some(Method::Deflated) = self.method {
+                    cmd.arg("-9");
+                }
+
+                if let Some(ref pwd) = self.password {
+                    cmd.arg("-e");
+                    cmd.arg("-P").arg(pwd);
+                }
+
+                if let Some(size_mb) = self.volume_size {
+                    cmd.arg("-s").arg(format!("{}m", size_mb));
+                }
+
+                cmd.arg(target);
+                for path in source.iter() {
+                    cmd.arg(path);
+                }
+
+                Self::run_command_with_logging(cmd)?;
+            }
+            Format::SevenZ => {
+                let mut cmd = Command::new("7z");
+                cmd.arg("a");
+                cmd.arg("-mmt12");
+                cmd.arg("-bb3");
+
+                if let Some(ref pwd) = self.password {
+                    cmd.arg("-p").arg(pwd);
+                }
+
+                if let Some(size_mb) = self.volume_size {
+                    cmd.arg(format!("-v{}m", size_mb));
+                }
+
+                cmd.arg(target);
+                for path in source {
+                    cmd.arg(path);
+                }
+                Self::run_command_with_logging(cmd)?;
+            }
+            Format::Xz => {
+                if source.len() > 1 || source[0].is_dir() {
+                    let tar_path = target.with_extension("tar");
+
+                    let mut tar_cmd = Command::new("tar");
+                    tar_cmd.arg("-cvf");
+                    tar_cmd.arg(&tar_path);
+
+                    for path in source {
+                        tar_cmd.arg(path);
+                    }
+
+                    Self::run_command_with_logging(tar_cmd)?;
+
+                    let mut xz_cmd = Command::new("xz");
+                    xz_cmd.arg("-f");
+                    xz_cmd.arg("-v");
+                    xz_cmd.arg("-T").arg("12");
+                    xz_cmd.arg(&tar_path);
+
+                    Self::run_command_with_logging(xz_cmd)?;
+
+                    let xz_path = tar_path.with_extension("tar.xz");
+                    if xz_path != target {
+                        info!("Renaming {:?} to {:?}", xz_path, target);
+                        fs::rename(xz_path, target)?;
+                    }
+                } else {
+                    let mut cmd = Command::new("xz");
+                    cmd.arg("-k");
+                    cmd.arg("-f");
+                    cmd.arg("-v");
+                    cmd.arg("-T").arg("12");
+                    cmd.arg(source[0]);
+
+                    let compressed = source[0].with_extension("xz");
+                    if compressed != target {
+                        info!("Copy {:?} to {:?}", compressed, target);
+                        fs::rename(compressed, target)?;
+                    }
+                }
+            }
+            Format::Gz => {
+                todo!()
+            }
+        }
+        Ok(())
+    }
+}
+fn ensure_extension(p: &Path, extension: &str) -> PathBuf {
+    if p.extension().map(|ext| ext != extension).unwrap_or(true) {
+        let mut new_name = p.file_name().unwrap_or_default().to_os_string();
+        new_name.push(".".to_string() + extension);
+        p.with_file_name(new_name)
+    } else {
+        p.to_path_buf()
     }
 }
 

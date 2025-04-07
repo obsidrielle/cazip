@@ -1,7 +1,0 @@
-[package]
-name = "lib_lz77"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-rle-decode-fast = "1.0.0"
