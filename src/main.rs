@@ -9,6 +9,8 @@ pub mod codecs;
 pub mod file_tree;
 pub mod utils;
 mod cli;
+mod script;
+mod venv;
 
 /// Result type for zip operations
 pub type Result<T> = std::result::Result<T, ZipError>;

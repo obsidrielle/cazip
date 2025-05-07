@@ -1,192 +1,386 @@
 pub(crate) use crate::{codecs, codecs::Format, Result};
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use log::{debug, info};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
+use crate::script::ScriptRunner;
+use crate::venv::VirtualEnv;
 use crate::ZipError;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    /// The name of compressed files without the suffix.
-    /// Not required when list_filetree is enabled
-    #[arg(required_unless_present = "list_filestree")]
-    pub target: Option<PathBuf>,
-
-    /// The name of source files with suffix and archives.
-    pub source: Vec<PathBuf>,
-
-    /// Format: zip, gz, 7z, xz
-    #[arg(short, long)]
-    pub format: Option<Format>,
-
-    /// Compression algorithm: deflate, bzip2, zstd
-    #[arg(short, long)]
-    pub method: Option<String>,
-
-    /// Password for encryption
-    #[arg(short, long)]
-    pub password: Option<String>,
-
-    /// Extract mode
-    #[arg(short, long)]
-    pub unzip: bool,
+    #[command(subcommand)]
+    pub command: Commands,
 
     /// Enable debug output
     #[arg(short, long)]
     pub debug: bool,
+}
 
-    /// Use command line tools instead of Rust backend
-    #[arg(short = 'e', long)]
-    pub use_external: bool,
+#[derive(Subcommand)]
+pub enum Commands {
+    /// 压缩文件
+    #[command(alias = "c")]
+    Compress {
+        /// 压缩后的文件路径
+        target: PathBuf,
 
-    /// Volume size in MB for split archives (only for zip and 7z)
-    #[arg(short = 'v', long)]
-    pub volume_size: Option<usize>,
+        /// 要压缩的源文件路径
+        source: Vec<PathBuf>,
 
-    /// List the file tree (doesn't require target)
-    #[arg(short, long)]
-    pub list_filestree: bool,
+        /// 压缩格式: zip, gz, 7z, xz
+        #[arg(short, long)]
+        format: Option<Format>,
 
-    /// Extracts parts of files from archive.
-    #[arg(long, value_delimiter = ',')]
-    pub files: Option<Vec<String>>,
+        /// 压缩算法: deflate, bzip2, zstd
+        #[arg(short, long)]
+        method: Option<String>,
+
+        /// 加密密码
+        #[arg(short, long)]
+        password: Option<String>,
+
+        /// 使用命令行工具而不是Rust后端
+        #[arg(short = 'e', long)]
+        use_external: bool,
+
+        /// 分卷大小(MB)，仅适用于zip和7z
+        #[arg(short = 'v', long)]
+        volume_size: Option<usize>,
+    },
+
+    /// 解压文件
+    #[command(alias = "e")]
+    Extract {
+        /// 解压目标目录
+        target: PathBuf,
+
+        /// 要解压的源文件
+        source: Vec<PathBuf>,
+
+        /// 压缩格式: zip, gz, 7z, xz
+        #[arg(short, long)]
+        format: Option<Format>,
+
+        /// 加密密码
+        #[arg(short, long)]
+        password: Option<String>,
+
+        /// 使用命令行工具而不是Rust后端
+        #[arg(short = 'e', long)]
+        use_external: bool,
+
+        /// 从压缩包中提取指定文件
+        #[arg(long, value_delimiter = ',', requires = "use_external")]
+        files: Option<Vec<String>>,
+    },
+
+    /// 执行脚本处理文件
+    #[command(alias = "s")]
+    Script {
+        /// 源文件路径
+        source: Vec<PathBuf>,
+
+        /// 脚本文件路径
+        #[arg(long)]
+        script_file: PathBuf,
+
+        /// 虚拟环境目录
+        #[arg(long)]
+        virtual_env_dir: Option<PathBuf>,
+
+        /// 是否解压模式
+        #[arg(short, long)]
+        unzip: bool,
+    },
+
+    /// 列出压缩包内容
+    #[command(alias = "l")]
+    List {
+        /// 压缩包文件路径
+        source: PathBuf,
+
+        /// 压缩格式: zip, gz, 7z, xz
+        #[arg(short, long)]
+        format: Option<Format>,
+    },
 }
 
 impl Cli {
-    /// Identify format from file extension if not specified
-    pub fn identify_format(&mut self) -> Result<Format> {
-        if self.format.is_some() {
-            return Ok(self.format.unwrap());
+    /// 从文件扩展名识别格式
+    fn identify_format(format_opt: &Option<Format>, path: &Path, is_extract: bool) -> Result<Format> {
+        if let Some(format) = format_opt {
+            return Ok(*format);
         }
 
-        let path_to_check = if self.unzip && !self.list_filestree {
-            // Use first source file for extraction or listing
-            &self.source[0]
-        } else {
-            // Use target for compression
-            self.target.as_ref().unwrap()
-        };
-
-        if let Some(ext) = path_to_check.extension() {
+        if let Some(ext) = path.extension() {
             let ext_str = ext.to_string_lossy().to_lowercase();
             Ok(Format::from(ext_str.as_str()))
         } else {
-            // Default to ZIP if no extension is provided
+            // 如果没有提供扩展名，默认为ZIP
             Ok(Format::Zip)
         }
     }
 
-    /// Process command and execute compression or extraction
-    pub fn execute(mut self) -> Result<()> {
-        // Identify format from extension if not specified
-        let format = self.identify_format()?;
-        self.format = Some(format);
-        
-        if self.files.is_some() && (!self.unzip || !self.use_external) {
-            return Err(ZipError::Other("File option (-p) must be used with unzip (-u) and use-external (-e)".to_string()));
-        }
-
-        if self.list_filestree {
-            if self.source.is_empty() {
-                // 尝试使用 target 作为源
-                if let Some(target) = &self.target {
-                    self.source.push(target.clone());
-                } else {
-                    return Err(crate::ZipError::Other("When using list mode (-l), you must specify at least one file to list".to_string()));
-                }
-            }
-            return self.list_archive_contents();
-        }
-        
-        // Validate inputs
-        if self.source.is_empty()  {
-            return Err(crate::ZipError::Other("No source files specified".to_string()));
-        }
-
-        // For list_filestree operation, we don't need a target
-        if !(self.list_filestree && self.unzip) && self.target.is_none() {
-            return Err(crate::ZipError::Other("Target path is required unless listing file tree".to_string()));
-        }
-        
-        if self.debug {
-            self.log_debug_info();
-        }
-
-          // Get target path (safe to unwrap since we validated above)
-        let target = self.target.as_ref().unwrap();
-
-        // Create codec factory based on configuration
-        let codec_factory = codecs::CodecFactory::new(
-            format,
-            self.method.as_deref(),
-            self.password.clone(),
-            self.volume_size,
-            self.use_external,
-        );
-
-        // Get actual codec implementation
-        let mut codec = codec_factory.create_codec()?;
-
-        // Source paths
-        let source_paths: Vec<&Path> = self.source.iter().map(|p| p.as_path()).collect();
-
-        println!("{:?}", self.files);
-
-        // Perform operation
-        if self.unzip {
-            if let Some(parts) = self.files {
-                println!("parts");
-                codec.extract_parts(&source_paths, target, &parts)
-            } else {
-                codec.extract(&source_paths, target)
-            }
-        } else {
-            codec.compress(&source_paths, target)
-        }
-    }
-
-    fn log_debug_info(&self) {
+    /// 记录调试信息
+    fn log_debug_info(
+        source: &[PathBuf],
+        target: Option<&PathBuf>,
+        is_compress: bool,
+        format: Option<Format>,
+        method: Option<&str>,
+        password: Option<&String>
+    ) {
         let yes = "✓";
         let no = "✗";
 
-        let source_paths = self.source.iter()
+        let source_paths = source.iter()
             .map(|p| std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf()))
             .collect::<Vec<_>>();
 
         debug!("Source: {:?}", source_paths);
 
-        if let Some(target) = &self.target {
-            if let Ok(abs_target) = std::path::absolute(target) {
+        if let Some(target_path) = target {
+            if let Ok(abs_target) = std::path::absolute(target_path) {
                 debug!("Target: {:?}", abs_target);
             } else {
-                debug!("Target: {:?}", target);
+                debug!("Target: {:?}", target_path);
             }
         } else {
             debug!("Target: None (list mode)");
         }
 
-        debug!("Compress: {}", if !self.unzip { yes } else { no });
+        debug!("Compress: {}", if is_compress { yes } else { no });
 
-        if !self.unzip && self.format.is_some() {
-            debug!("Format: {:?}", self.format.unwrap());
-            debug!("Method: {:?}", self.method.as_deref().unwrap_or("default"));
+        if is_compress && format.is_some() {
+            debug!("Format: {:?}", format.unwrap());
+            debug!("Method: {:?}", method.unwrap_or("default"));
         }
 
-        if let Some(ref password) = self.password {
-            debug!("Password: {}, encryption: AES256", password);
+        if let Some(pwd) = password {
+            debug!("Password: {}, encryption: AES256", pwd);
         }
     }
 
-    fn list_archive_contents(&self) -> Result<()> {
-        let format = self.format.unwrap();
+    /// 验证输入参数
+    fn validate_source_not_empty(source: &[PathBuf]) -> Result<()> {
+        if source.is_empty() {
+            return Err(ZipError::Other("No source files specified".to_string()));
+        }
+        Ok(())
+    }
+
+    /// 执行压缩操作
+    fn execute_compress(
+        target: PathBuf,
+        source: Vec<PathBuf>,
+        format_opt: Option<Format>,
+        method: Option<String>,
+        password: Option<String>,
+        use_external: bool,
+        volume_size: Option<usize>,
+        debug: bool
+    ) -> Result<()> {
+        Self::validate_source_not_empty(&source)?;
+
+        let format = Self::identify_format(&format_opt, &target, false)?;
+
+        if debug {
+            Self::log_debug_info(
+                &source,
+                Some(&target),
+                true,
+                Some(format),
+                method.as_deref(),
+                password.as_ref()
+            );
+        }
+
+        // 创建编解码器工厂
+        let codec_factory = codecs::CodecFactory::new(
+            format,
+            method.as_deref(),
+            password,
+            volume_size,
+            use_external,
+        );
+
+        // 获取实际编解码器实现
+        let mut codec = codec_factory.create_codec()?;
+
+        // 源路径
+        let source_paths: Vec<&Path> = source.iter().map(|p| p.as_path()).collect();
+
+        // 执行压缩
+        codec.compress(&source_paths, &target, None)
+    }
+
+    /// 执行解压操作
+    fn execute_extract(
+        target: PathBuf,
+        source: Vec<PathBuf>,
+        format_opt: Option<Format>,
+        password: Option<String>,
+        use_external: bool,
+        files: Option<Vec<String>>,
+        debug: bool
+    ) -> Result<()> {
+        Self::validate_source_not_empty(&source)?;
+
+        let format = Self::identify_format(&format_opt, &source[0], true)?;
+
+        if debug {
+            Self::log_debug_info(
+                &source,
+                Some(&target),
+                false,
+                Some(format),
+                None,
+                password.as_ref()
+            );
+        }
+
+        // 创建编解码器工厂
+        let codec_factory = codecs::CodecFactory::new(
+            format,
+            None,
+            password,
+            None,
+            use_external,
+        );
+
+        // 获取实际编解码器实现
+        let mut codec = codec_factory.create_codec()?;
+
+        // 源路径
+        let source_paths: Vec<&Path> = source.iter().map(|p| p.as_path()).collect();
+
+        // 执行解压
+        if let Some(parts) = files {
+            codec.extract_parts(&source_paths, &target, &parts)
+        } else {
+            codec.extract(&source_paths, &target)
+        }
+    }
+
+    /// 执行脚本操作
+    fn execute_script(
+        source: Vec<PathBuf>,
+        script_file: PathBuf,
+        virtual_env_dir: Option<PathBuf>,
+        unzip: bool,
+    ) -> Result<()> {
+        // 设置虚拟环境
+        let virtual_env = virtual_env_dir.map(|dir| VirtualEnv::new(dir.as_path()));
+
+        // 创建脚本运行器
+        let script = ScriptRunner::new(
+            source.clone(),
+            virtual_env.as_ref().unwrap().get_interpreter_path().as_path(),
+            unzip,
+            &script_file,
+        )?;
+
+        script.run()
+    }
+
+    /// 列出压缩包内容
+    fn execute_list(
+        source: PathBuf,
+        format_opt: Option<Format>,
+        debug: bool
+    ) -> Result<()> {
+        let format = Self::identify_format(&format_opt, &source, true)?;
+
+        if debug {
+            Self::log_debug_info(
+                &[source.clone()],
+                None,
+                false,
+                Some(format),
+                None,
+                None
+            );
+        }
 
         let contents = crate::file_tree::list_archive_contents_json(
-            &self.source[0],
+            &source,
             format.into(),
-            self.debug
+            debug
         )?;
 
         println!("{}", contents);
         Ok(())
+    }
+
+    /// 执行命令
+    pub fn execute(self) -> Result<()> {
+        match self.command {
+            Commands::Compress {
+                target,
+                source,
+                format,
+                method,
+                password,
+                use_external,
+                volume_size
+            } => {
+                Self::execute_compress(
+                    target,
+                    source,
+                    format,
+                    method,
+                    password,
+                    use_external,
+                    volume_size,
+                    self.debug
+                )
+            },
+
+            Commands::Extract {
+                target,
+                source,
+                format,
+                password,
+                use_external,
+                files
+            } => {
+                Self::execute_extract(
+                    target,
+                    source,
+                    format,
+                    password,
+                    use_external,
+                    files,
+                    self.debug
+                )
+            },
+
+            Commands::Script {
+                source,
+                script_file,
+                virtual_env_dir,
+                unzip,
+            } => {
+                Self::execute_script(
+                    source,
+                    script_file,
+                    virtual_env_dir,
+                    unzip,
+                )
+            },
+
+            Commands::List {
+                source,
+                format
+            } => {
+                Self::execute_list(
+                    source,
+                    format,
+                    self.debug
+                )
+            },
+        }
     }
 }

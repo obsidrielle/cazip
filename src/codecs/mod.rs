@@ -60,7 +60,7 @@ pub trait Codec {
     }
     
     /// Compress files into an archive
-    fn compress(&mut self, source: &[&Path], target: &Path) -> Result<()>;
+    fn compress(&mut self, source: &[&Path], target: &Path, _exclude: Option<&[&Path]>) -> Result<()>;
 }
 
 /// Factory for creating codec instances

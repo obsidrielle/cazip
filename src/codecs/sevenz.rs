@@ -37,7 +37,7 @@ impl Codec for SevenZCodec {
         }
     }
 
-    fn compress(&mut self, source: &[&Path], target: &Path) -> Result<()> {
+    fn compress(&mut self, source: &[&Path], target: &Path, _exclude: Option<&[&Path]>) -> Result<()> {
         let target = ensure_extension(target, "7z");
         ensure_directory_exists(target.parent().unwrap_or(Path::new(".")))?;
 

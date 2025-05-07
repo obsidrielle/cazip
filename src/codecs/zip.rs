@@ -198,7 +198,7 @@ impl Codec for ZipCodec {
         Ok(())
     }
 
-    fn compress(&mut self, source: &[&Path], target: &Path) -> Result<()> {
+    fn compress(&mut self, source: &[&Path], target: &Path, _exclude: Option<&[&Path]>) -> Result<()> {
         let start = Instant::now();
 
         // Ensure target directory exists

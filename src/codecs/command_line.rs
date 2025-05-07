@@ -310,7 +310,7 @@ impl Codec for CommandLineCodec {
         Ok(())
     }
     
-    fn compress(&mut self, source: &[&Path], target: &Path) -> Result<()> {
+    fn compress(&mut self, source: &[&Path], target: &Path, exclude: Option<&[&Path]>) -> Result<()> {
         let start = Instant::now();
 
         if let Some(parent) = target.parent() {
@@ -339,19 +339,34 @@ impl Codec for CommandLineCodec {
                     cmd.arg("-s").arg(format!("{}m", size_mb));
                 }
 
+                if let Some(exclude_paths) = exclude {
+                    for path in exclude_paths {
+                        if let Some(file_name) = path.file_name() {
+                            cmd.arg(format!("-x={}", file_name.to_string_lossy()));
+                        }
+                    }
+                }
+                
                 cmd.arg(target);
                 
                 // Find the parent directory to use as base
                 if !source.is_empty() {
                     let first_path = source[0];
                     if let Some(parent_dir) = first_path.parent() {
-                        cmd.current_dir(parent_dir);
-                        // cmd.arg("-cd").arg(parent_dir);
-                
-                        // Add all files relative to the parent directory
-                        for path in source {
-                            if let Some(file_name) = path.file_name() {
-                                cmd.arg(file_name);
+                        println!("{:?}", parent_dir);
+                        if format!("{:?}", parent_dir) != "\"\"" {
+                            cmd.current_dir(parent_dir);
+                            // cmd.arg("-cd").arg(parent_dir);
+
+                            // Add all files relative to the parent directory
+                            for path in source {
+                                if let Some(file_name) = path.file_name() {
+                                    cmd.arg(file_name);
+                                }
+                            }
+                        } else {
+                            for path in source {
+                                cmd.arg(path);
                             }
                         }
                     } else {
@@ -378,6 +393,12 @@ impl Codec for CommandLineCodec {
                     cmd.arg(format!("-v{}m", size_mb));
                 }
 
+                if let Some(exclude_paths) = exclude {
+                    for path in exclude_paths {
+                        cmd.arg(format!("-xr!{}", path.to_string_lossy()));
+                    }
+                }
+                
                 cmd.arg(target);
 
                 for path in source {
@@ -395,10 +416,18 @@ impl Codec for CommandLineCodec {
                     tar_cmd.arg("-cvf");
                     tar_cmd.arg(&tar_path);
 
+                    if let Some(exclude_paths) = exclude {
+                        for path in exclude_paths {
+                            tar_cmd.arg("--exclude");
+                            tar_cmd.arg(path);
+                        }
+                    }
+                    
                     for path in source {
                         tar_cmd.arg(path);
                     }
 
+                    
                     Self::run_command_with_logging(tar_cmd)?;
 
                     // Compress the tar file with xz

@@ -29,7 +29,7 @@ impl Codec for GzipCodec {
         Ok(())
     }
 
-    fn compress(&mut self, source: &[&Path], target: &Path) -> Result<()> {
+    fn compress(&mut self, source: &[&Path], target: &Path, _exclude: Option<&[&Path]>) -> Result<()> {
         ensure_directory_exists(target.parent().unwrap_or(Path::new(".")))?;
 
         // GZip only compresses a single file
