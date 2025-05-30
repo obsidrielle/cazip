@@ -61,12 +61,13 @@ impl CompressionMethod {
 pub struct ZipCodec {
     method: CompressionMethod,
     password: Option<String>,
+    compression_level: u8,
 }
 
 impl ZipCodec {
     /// Create a new ZIP codec
     pub fn new(method: CompressionMethod, password: Option<String>) -> Self {
-        Self { method, password }
+        Self { method, password, compression_level: 6 }
     }
 
     /// Add a file to the zip archive
@@ -149,7 +150,6 @@ impl Codec for ZipCodec {
         let total_files = archive.len();
         info!("Archive contains {} files", total_files);
 
-        // Process files in parallel
         (0..archive.len())
             .into_par_iter()
             .try_for_each_with(archive, |archive, i| {
@@ -201,29 +201,26 @@ impl Codec for ZipCodec {
     fn compress(&mut self, source: &[&Path], target: &Path, _exclude: Option<&[&Path]>) -> Result<()> {
         let start = Instant::now();
 
-        // Ensure target directory exists
         if let Some(p) = target.parent() {
             if !p.exists() {
                 fs::create_dir_all(p)?;
             }
         }
 
-        // Setup compression options
         let zip_method = self.method.to_zip_method();
 
         let mut options = SimpleFileOptions::default()
             .compression_method(zip_method)
-            .unix_permissions(0o755);
+            .unix_permissions(0o755)
+            .compression_level(Some(self.compression_level as i64));
 
         if let Some(password) = &self.password {
             options = options.with_aes_encryption(AesMode::Aes256, password);
         }
 
-        // Create zip writer
         let mut writer = ZipWriter::new(File::create(target)?);
         info!("Zip writer created");
 
-        // Process each source path
         for item in source {
             if item.is_file() {
                 let mut f = File::open(item)?;
@@ -256,5 +253,13 @@ impl Codec for ZipCodec {
         );
 
         Ok(())
+    }
+
+    fn compression_level_range(&self) -> (u8, u8) {
+        (0, 9)
+    }
+
+    fn set_compression_level(&mut self, level: u8) {
+        self.compression_level = level;
     }
 }

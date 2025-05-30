@@ -96,12 +96,11 @@ where F: FnMut(String) + Send + 'static {
                 handler(line);
             }
             OutputLine::Stderr(line) => {
-                error!("{}", line);
+                info!("{}", line);
                 handler(line);
             }
         }
 
-        // 检查命令是否已经完成
         if wait_thread.is_finished() {
             break;
         }
@@ -109,13 +108,6 @@ where F: FnMut(String) + Send + 'static {
 
     stdout_thread.join().unwrap();
     stderr_thread.join().unwrap();
-
-    // let success = wait_thread.join().unwrap();
-    // if success {
-    //     return Err(ZipError::ExternalCommand(
-    //         "Command failed".to_string()
-    //     ));
-    // }
 
     Ok(())
 }

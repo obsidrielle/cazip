@@ -122,21 +122,19 @@ impl Codec for CommandLineCodec {
                 let filename = source_path.to_string_lossy();
 
                 if filename.ends_with(".tar.xz") || source_path.extension().map_or(false, |ext| ext == "txz") {
-                    // For tar.xz files
+                    // 直接用 tar 解包，tar 会自动识别 xz 压缩
                     let mut cmd = Command::new("tar");
                     cmd.arg("-xvf");
                     cmd.arg(source_path);
                     cmd.arg("-C").arg(target);
-
                     Self::run_command_with_logging(cmd)?;
                 } else {
-                    // For .xz files (single file compression)
+                    // 普通 .xz 文件
                     let mut cmd = Command::new("xz");
                     cmd.arg("-d");
                     cmd.arg("-v");
                     cmd.arg("-k");
                     cmd.arg(source_path);
-
                     Self::run_command_with_logging(cmd)?;
 
                     // Get the uncompressed file path
@@ -144,29 +142,13 @@ impl Codec for CommandLineCodec {
                     let source_dir = source_path.parent().unwrap_or(Path::new("."));
                     let uncompressed = source_dir.join(source_stem);
 
-                    println!("Uncompressed tar file: {}", uncompressed.to_string_lossy());
-                    
-                    if uncompressed.extension().map_or(false, |ext| ext == "tar")
-                        || uncompressed.to_string_lossy().ends_with(".tar") || is_tar_file(uncompressed.as_path())
-                    {
-                        // If it's a .tar file, extract it
-                        let mut cmd = Command::new("tar");
-                        cmd.arg("-xvf");
-                        cmd.arg(&uncompressed);
-                        cmd.arg("-C").arg(target);
-
-                        Self::run_command_with_logging(cmd)?;
+                    let target_file = if target.is_dir() {
+                        target.join(source_stem)
                     } else {
-                        // Otherwise just copy it
-                        let target_file = if target.is_dir() {
-                            target.join(source_stem)
-                        } else {
-                            target.to_path_buf()
-                        };
-
-                        info!("Copying uncompressed file to: {:?}", target_file);
-                        fs::copy(uncompressed, target_file)?;
-                    }
+                        target.to_path_buf()
+                    };
+                    info!("Copying uncompressed file to: {:?}", target_file);
+                    fs::copy(uncompressed, target_file)?;
                 }
             }
             Format::Gz => {
@@ -265,33 +247,14 @@ impl Codec for CommandLineCodec {
                     let source_dir = source_path.parent().unwrap_or(Path::new("."));
                     let uncompressed = source_dir.join(source_stem);
 
-                    println!("Uncompressed tar file: {}", uncompressed.to_string_lossy());
-
-                    if uncompressed.extension().map_or(false, |ext| ext == "tar")
-                        || uncompressed.to_string_lossy().ends_with(".tar") || is_tar_file(uncompressed.as_path())
-                    {
-                        // If it's a .tar file, extract it
-                        let mut cmd = Command::new("tar");
-                        cmd.arg("-xvf");
-                        cmd.arg(&uncompressed);
-                        cmd.arg("-C").arg(target);
-
-                        for part in parts {
-                            cmd.arg(part);
-                        }
-                        
-                        Self::run_command_with_logging(cmd)?;
+                    // 直接copy，不再判断是否tar
+                    let target_file = if target.is_dir() {
+                        target.join(source_stem)
                     } else {
-                        // Otherwise just copy it
-                        let target_file = if target.is_dir() {
-                            target.join(source_stem)
-                        } else {
-                            target.to_path_buf()
-                        };
-
-                        info!("Copying uncompressed file to: {:?}", target_file);
-                        fs::copy(uncompressed, target_file)?;
-                    }
+                        target.to_path_buf()
+                    };
+                    info!("Copying uncompressed file to: {:?}", target_file);
+                    fs::copy(uncompressed, target_file)?;
                 }
             }
             Format::Gz => {
@@ -349,32 +312,8 @@ impl Codec for CommandLineCodec {
                 
                 cmd.arg(target);
                 
-                // Find the parent directory to use as base
-                if !source.is_empty() {
-                    let first_path = source[0];
-                    if let Some(parent_dir) = first_path.parent() {
-                        println!("{:?}", parent_dir);
-                        if format!("{:?}", parent_dir) != "\"\"" {
-                            cmd.current_dir(parent_dir);
-                            // cmd.arg("-cd").arg(parent_dir);
-
-                            // Add all files relative to the parent directory
-                            for path in source {
-                                if let Some(file_name) = path.file_name() {
-                                    cmd.arg(file_name);
-                                }
-                            }
-                        } else {
-                            for path in source {
-                                cmd.arg(path);
-                            }
-                        }
-                    } else {
-                        // Just add all files directly
-                        for path in source {
-                            cmd.arg(path);
-                        }
-                    }
+                for path in source {
+                    cmd.arg(path);
                 }
 
                 Self::run_command_with_logging(cmd)?;
@@ -457,7 +396,7 @@ impl Codec for CommandLineCodec {
                     Self::run_command_with_logging(cmd)?;
 
                     // Move the compressed file to the target path
-                    let compressed = source[0].with_extension("xz");
+                    let compressed = PathBuf::from(source[0].to_string_lossy().into_owned() + ".xz");
                     if compressed != target {
                         info!("Renaming {:?} to {:?}", compressed, target);
                         fs::rename(compressed, target)?;
@@ -479,4 +418,9 @@ impl Codec for CommandLineCodec {
 
         Ok(())
     }
+
+    fn compression_level_range(&self) -> (u8, u8) {
+        (0, 9)
+    }
+    fn set_compression_level(&mut self, _level: u8) {}
 }

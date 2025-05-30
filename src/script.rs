@@ -23,8 +23,6 @@ impl ScriptRunner {
         is_extract: bool,
         script_path: &Path,
     ) -> Result<Self> {
-        let temp_dir = tempfile::tempdir()?;
-
         Ok(Self {
             env: ScriptEnvironment {
                 source_files,
@@ -37,11 +35,19 @@ impl ScriptRunner {
 
     pub fn run(&self) -> Result<()> {
         info!("Running processor script");
-        
-        let mut command = Command::new(&self.env.interpreter);
 
+        let venv_dir = self.env.interpreter.parent().unwrap();
+        let activate_path = venv_dir.join("activate");
+
+        // 使用shell执行命令，先激活环境再运行脚本
+        let mut command = Command::new("sh");
         command
-            .arg(&self.env.script_path)
+            .arg("-c")
+            .arg(format!(
+                "source {} && python \"{}\"",
+                activate_path.to_string_lossy(),
+                self.env.script_path.to_string_lossy()
+            ))
             .env("CAZIP_SOURCE_FILES", self.env.source_files.iter()
                 .map(|path| path.to_string_lossy().into())
                 .collect::<Vec<String>>()

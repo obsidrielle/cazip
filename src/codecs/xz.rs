@@ -98,4 +98,12 @@ impl Codec for XzCodec {
 
         Ok(())
     }
+
+    fn compression_level_range(&self) -> (u8, u8) {
+        (0, 9)
+    }
+
+    fn set_compression_level(&mut self, level: u8) {
+        self.compression_level = level as u32;
+    }
 }

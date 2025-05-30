@@ -48,6 +48,10 @@ pub enum Commands {
         /// 分卷大小(MB)，仅适用于zip和7z
         #[arg(short = 'v', long)]
         volume_size: Option<usize>,
+
+        /// 压缩等级（不同格式支持不同范围）
+        #[arg(short, long)]
+        level: Option<u8>,
     },
 
     /// 解压文件
@@ -180,7 +184,8 @@ impl Cli {
         password: Option<String>,
         use_external: bool,
         volume_size: Option<usize>,
-        debug: bool
+        debug: bool,
+        level: Option<u8>,
     ) -> Result<()> {
         Self::validate_source_not_empty(&source)?;
 
@@ -197,26 +202,31 @@ impl Cli {
             );
         }
 
-        // 创建编解码器工厂
         let codec_factory = codecs::CodecFactory::new(
             format,
             method.as_deref(),
             password,
             volume_size,
             use_external,
+            level,
         );
 
-        // 获取实际编解码器实现
         let mut codec = codec_factory.create_codec()?;
 
-        // 源路径
+        // 设置压缩等级（如果有）
+        if let Some(lv) = level {
+            let (min, max) = codec.compression_level_range();
+            if lv < min as u8 || lv > max as u8 {
+                return Err(ZipError::Other(format!("压缩等级超出范围: {}-{}", min, max)));
+            }
+            codec.set_compression_level(lv);
+        }
+
         let source_paths: Vec<&Path> = source.iter().map(|p| p.as_path()).collect();
 
-        // 执行压缩
         codec.compress(&source_paths, &target, None)
     }
 
-    /// 执行解压操作
     fn execute_extract(
         target: PathBuf,
         source: Vec<PathBuf>,
@@ -241,22 +251,19 @@ impl Cli {
             );
         }
 
-        // 创建编解码器工厂
         let codec_factory = codecs::CodecFactory::new(
             format,
             None,
             password,
             None,
             use_external,
+            None,
         );
 
-        // 获取实际编解码器实现
         let mut codec = codec_factory.create_codec()?;
 
-        // 源路径
         let source_paths: Vec<&Path> = source.iter().map(|p| p.as_path()).collect();
 
-        // 执行解压
         if let Some(parts) = files {
             codec.extract_parts(&source_paths, &target, &parts)
         } else {
@@ -264,17 +271,14 @@ impl Cli {
         }
     }
 
-    /// 执行脚本操作
     fn execute_script(
         source: Vec<PathBuf>,
         script_file: PathBuf,
         virtual_env_dir: Option<PathBuf>,
         unzip: bool,
     ) -> Result<()> {
-        // 设置虚拟环境
         let virtual_env = virtual_env_dir.map(|dir| VirtualEnv::new(dir.as_path()));
 
-        // 创建脚本运行器
         let script = ScriptRunner::new(
             source.clone(),
             virtual_env.as_ref().unwrap().get_interpreter_path().as_path(),
@@ -285,7 +289,6 @@ impl Cli {
         script.run()
     }
 
-    /// 列出压缩包内容
     fn execute_list(
         source: PathBuf,
         format_opt: Option<Format>,
@@ -314,7 +317,6 @@ impl Cli {
         Ok(())
     }
 
-    /// 执行命令
     pub fn execute(self) -> Result<()> {
         match self.command {
             Commands::Compress {
@@ -324,7 +326,8 @@ impl Cli {
                 method,
                 password,
                 use_external,
-                volume_size
+                volume_size,
+                level,
             } => {
                 Self::execute_compress(
                     target,
@@ -334,7 +337,8 @@ impl Cli {
                     password,
                     use_external,
                     volume_size,
-                    self.debug
+                    self.debug,
+                    level,
                 )
             },
 

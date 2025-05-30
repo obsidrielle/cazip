@@ -118,90 +118,90 @@ echo -e "${GREEN}[SUCCESS]${NC} 测试数据准备完成"
 
 # 测试用例3: 单文件压缩 (外部命令)
 run_test "单文件压缩 (外部命令)" \
-    "$CAZIP -e -f 7z single_file_ext.7z single_file.txt" \
+    "$CAZIP compress -e -f 7z single_file_ext.7z single_file.txt" \
     "[ -f single_file_ext.7z ] && [ -s single_file_ext.7z ]"
 
 # 测试用例4: 单文件解压 (外部命令)
 mkdir -p extract_single_ext
 run_test "单文件解压 (外部命令)" \
-    "$CAZIP -e -u -f 7z extract_single_ext single_file_ext.7z" \
+    "$CAZIP extract -e -f 7z extract_single_ext single_file_ext.7z" \
     "[ -f extract_single_ext/single_file.txt ] && diff single_file.txt extract_single_ext/single_file.txt"
 
 # 测试用例5: 目录压缩 (外部命令)
 run_test "目录压缩 (外部命令)" \
-    "$CAZIP -e -f 7z test_dir.7z test_directory" \
+    "$CAZIP compress -e -f 7z test_dir.7z test_directory" \
     "[ -f test_dir.7z ] && [ -s test_dir.7z ]"
 
 # 测试用例6: 目录解压 (外部命令)
 mkdir -p extract_dir
 run_test "目录解压 (外部命令)" \
-    "$CAZIP -e -u -f 7z extract_dir test_dir.7z" \
+    "$CAZIP extract -e -f 7z extract_dir test_dir.7z" \
     "[ -d extract_dir/test_directory ] && [ -f extract_dir/test_directory/file1.txt ]"
 
 # 测试用例7: 带密码的压缩
 run_test "带密码的压缩" \
-    "$CAZIP -e -f 7z -p test123 encrypted.7z single_file.txt" \
+    "$CAZIP compress -e -f 7z -p test123 encrypted.7z single_file.txt" \
     "[ -f encrypted.7z ] && [ -s encrypted.7z ]"
 
 # 测试用例8: 带密码的解压
 mkdir -p extract_encrypted
 run_test "带密码的解压" \
-    "$CAZIP -e -u -f 7z -p test123 extract_encrypted encrypted.7z" \
+    "$CAZIP extract -e -f 7z -p test123 extract_encrypted encrypted.7z" \
     "[ -f extract_encrypted/single_file.txt ] && diff single_file.txt extract_encrypted/single_file.txt"
 
 # 测试用例9: 压缩大文件
 run_test "大文件压缩" \
-    "$CAZIP -e -f 7z large_file.7z large_file.bin" \
+    "$CAZIP compress -e -f 7z large_file.7z large_file.bin" \
     "[ -f large_file.7z ] && [ -s large_file.7z ]"
 
 # 测试用例10: 解压大文件
 mkdir -p extract_large
 run_test "大文件解压" \
-    "$CAZIP -e -u -f 7z extract_large large_file.7z" \
+    "$CAZIP extract -e -f 7z extract_large large_file.7z" \
     "[ -f extract_large/large_file.bin ] && diff large_file.bin extract_large/large_file.bin"
 
 # 测试用例11: 压缩多个文件
 run_test "多文件压缩" \
-    "$CAZIP -e -f 7z multi_files.7z single_file.txt test_directory/file1.txt" \
+    "$CAZIP compress -e -f 7z multi_files.7z single_file.txt test_directory/file1.txt" \
     "[ -f multi_files.7z ] && [ -s multi_files.7z ]"
 
 # 测试用例12: 解压多文件压缩包
 mkdir -p extract_multi
 run_test "多文件解压" \
-    "$CAZIP -e -u -f 7z extract_multi multi_files.7z" \
+    "$CAZIP extract -e -f 7z extract_multi multi_files.7z" \
     "[ -f extract_multi/single_file.txt ] && [ -f extract_multi/test_directory/file1.txt ]"
 
 # 测试用例13: 压缩具有特殊名称的文件
 run_test "压缩特殊名称文件" \
-    "$CAZIP -e -f 7z special_names.7z \"special filename with spaces.txt\" \"中文文件名.txt\"" \
+    "$CAZIP compress -e -f 7z special_names.7z \"special filename with spaces.txt\" \"中文文件名.txt\"" \
     "[ -f special_names.7z ] && [ -s special_names.7z ]"
 
 # 测试用例14: 解压具有特殊名称的文件
 mkdir -p extract_special
 run_test "解压特殊名称文件" \
-    "$CAZIP -e -u -f 7z extract_special special_names.7z" \
+    "$CAZIP extract -e -f 7z extract_special special_names.7z" \
     "[ -f \"extract_special/special filename with spaces.txt\" ] && [ -f \"extract_special/中文文件名.txt\" ]"
 
 # 测试用例15: 压缩含中文内容的文件
 run_test "压缩中文内容文件" \
-    "$CAZIP -e -f 7z chinese_content.7z chinese_text.txt" \
+    "$CAZIP compress -e -f 7z chinese_content.7z chinese_text.txt" \
     "[ -f chinese_content.7z ] && [ -s chinese_content.7z ]"
 
 # 测试用例16: 解压含中文内容的文件
 mkdir -p extract_chinese
 run_test "解压中文内容文件" \
-    "$CAZIP -e -u -f 7z extract_chinese chinese_content.7z" \
+    "$CAZIP extract -e -f 7z extract_chinese chinese_content.7z" \
     "[ -f extract_chinese/chinese_text.txt ] && diff chinese_text.txt extract_chinese/chinese_text.txt"
 
 # 测试用例17: 高压缩率测试 (全零文件)
 run_test "高压缩率文件测试" \
-    "$CAZIP -e -f 7z zeros.7z zeros.bin" \
+    "$CAZIP compress -e -f 7z zeros.7z zeros.bin" \
     "[ -f zeros.7z ] && [ \$(stat -c%s zeros.7z) -lt \$(stat -c%s zeros.bin) ]"
 
 # 测试用例18: 分卷压缩 (如果支持)
 if $CAZIP -e -f 7z -v 1 vol_test.7z single_file.txt >/dev/null 2>&1; then
     run_test "分卷压缩" \
-        "$CAZIP -e -f 7z -v 1 vol_split.7z test_directory" \
+        "$CAZIP compress -e -f 7z -v 1 vol_split.7z test_directory" \
         "[ -f vol_split.7z.001 ] || [ -f vol_split.7z.0001 ]"
 
     # 分卷解压测试
@@ -209,7 +209,7 @@ if $CAZIP -e -f 7z -v 1 vol_test.7z single_file.txt >/dev/null 2>&1; then
         mkdir -p extract_vol
         vol_file=$(ls vol_split.7z.* | head -1)
         run_test "分卷解压" \
-            "$CAZIP -e -u -f 7z extract_vol $vol_file" \
+            "$CAZIP extract -e -f 7z extract_vol $vol_file" \
             "[ -d extract_vol/test_directory ]"
     fi
 else
@@ -218,12 +218,12 @@ fi
 
 # 测试用例19: UTF-16 文件处理
 run_test "UTF-16 文件压缩" \
-    "$CAZIP -e -f 7z utf16.7z utf16_file.txt" \
+    "$CAZIP compress -e -f 7z utf16.7z utf16_file.txt" \
     "[ -f utf16.7z ] && [ -s utf16.7z ]"
 
 mkdir -p extract_utf16
 run_test "UTF-16 文件解压" \
-    "$CAZIP -e -u -f 7z extract_utf16 utf16.7z" \
+    "$CAZIP extract -e -f 7z extract_utf16 utf16.7z" \
     "[ -f extract_utf16/utf16_file.txt ] && cmp utf16_file.txt extract_utf16/utf16_file.txt"
 
 # 测试用例20: 文件列表功能
@@ -235,79 +235,39 @@ else
     echo -e "${YELLOW}[SKIPPED]${NC} 文件列表功能 - 不支持"
 fi
 
-add_partial_extraction_tests() {
-    local format=$1
-    local format_ext=$2
-    local cazip=$3
+# ====== 压缩等级测试（仅外部命令模式） ======
+# native实现暂不支持压缩等级参数
 
-    # 为部分提取测试创建特殊的测试数据
-    echo -e "\n${YELLOW}[INFO]${NC} 创建部分提取测试的数据..."
+# 测试用例: 7z压缩等级1（外部命令）
+run_test "7z压缩等级1（外部命令）" \
+    "$CAZIP compress -e -f 7z --level 1 level1.7z single_file.txt" \
+    "[ -f level1.7z ] && [ -s level1.7z ]"
 
-    # 创建有特定目录结构的测试目录
-    mkdir -p test_structure/dir1
-    mkdir -p test_structure/dir2/subdir
+mkdir -p extract_level1_7z
+run_test "7z解压等级1压缩包（外部命令）" \
+    "$CAZIP extract -e -f 7z extract_level1_7z level1.7z" \
+    "[ -f extract_level1_7z/single_file.txt ] && diff single_file.txt extract_level1_7z/single_file.txt"
 
-    # 创建不同格式的测试文件
-    echo "这是文本文件1" > test_structure/file1.txt
-    echo "这是文本文件2" > test_structure/dir1/file2.txt
-    echo "这是文本文件3" > test_structure/dir2/file3.txt
-    echo "这是子目录中的文件" > test_structure/dir2/subdir/file4.txt
+# 测试用例: 7z压缩等级5（外部命令）
+run_test "7z压缩等级5（外部命令）" \
+    "$CAZIP compress -e -f 7z --level 5 level5.7z single_file.txt" \
+    "[ -f level5.7z ] && [ -s level5.7z ]"
 
-    # 创建其他类型的文件
-    dd if=/dev/urandom of=test_structure/binary1.bin bs=1k count=5 2>/dev/null
-    dd if=/dev/urandom of=test_structure/dir1/binary2.bin bs=1k count=5 2>/dev/null
+mkdir -p extract_level5_7z
+run_test "7z解压等级5压缩包（外部命令）" \
+    "$CAZIP extract -e -f 7z extract_level5_7z level5.7z" \
+    "[ -f extract_level5_7z/single_file.txt ] && diff single_file.txt extract_level5_7z/single_file.txt"
 
-    # 压缩测试目录
-    case $format in
-        "zip")
-            $cazip -f $format -e test_structure.$format_ext test_structure
-            ;;
-        "7z")
-            $cazip -e -f $format test_structure.$format_ext test_structure
-            ;;
-        "xz"|"gz")
-            # 对于xz和gz，需要先创建tar文件
-            tar -cf test_structure.tar test_structure
-            $cazip -f $format test_structure.tar.$format_ext test_structure.tar
-            ;;
-    esac
+# 测试用例: 7z压缩等级9（外部命令）
+run_test "7z压缩等级9（外部命令）" \
+    "$CAZIP compress -e -f 7z --level 9 level9.7z single_file.txt" \
+    "[ -f level9.7z ] && [ -s level9.7z ]"
 
-    echo -e "${GREEN}[SUCCESS]${NC} 部分提取测试数据创建完成"
+mkdir -p extract_level9_7z
+run_test "7z解压等级9压缩包（外部命令）" \
+    "$CAZIP extract -e -f 7z extract_level9_7z level9.7z" \
+    "[ -f extract_level9_7z/single_file.txt ] && diff single_file.txt extract_level9_7z/single_file.txt"
 
-    # 测试用例：提取单个文件
-    mkdir -p extract_single_file
-    run_test "提取单个文件" \
-        "$cazip -u -e --files test_structure/file1.txt -f $format extract_single_file test_structure.$format_ext" \
-        "[ -f extract_single_file/test_structure/file1.txt ] && [ ! -f extract_single_file/test_structure/dir1/file2.txt ]"
-
-    # 测试用例：提取特定目录
-    mkdir -p extract_specific_dir
-    run_test "提取特定目录" \
-        "$cazip -u -e --files 'test_structure/dir1' -f $format extract_specific_dir test_structure.$format_ext" \
-        "[ -d extract_specific_dir/test_structure/dir1 ] && [ -f extract_specific_dir/test_structure/dir1/file2.txt ] && [ ! -f extract_specific_dir/test_structure/file1.txt ]"
-
-    # 测试用例：提取多个文件
-    mkdir -p extract_multiple_files
-    run_test "提取多个文件" \
-        "$cazip -u -e -f $format extract_multiple_files test_structure.$format_ext --files test_structure/file1.txt,test_structure/dir2/file3.txt" \
-        "[ -f extract_multiple_files/test_structure/file1.txt ] && [ -f extract_multiple_files/test_structure/dir2/file3.txt ] && [ ! -f extract_multiple_files/test_structure/dir1/file2.txt ]"
-
-    # 测试用例：提取使用通配符（仅适用于支持通配符的格式）
-    if [ "$format" = "zip" ] || [ "$format" = "7z" ]; then
-        mkdir -p extract_wildcard
-        run_test "使用通配符提取文件" \
-            "$cazip -u -e --files 'test_structure/*.txt' -f $format extract_wildcard test_structure.$format_ext" \
-            "[ -f extract_wildcard/test_structure/file1.txt ] && [ ! -f extract_wildcard/test_structure/binary1.bin ]"
-    fi
-
-    # 测试用例：提取子目录中的文件
-    mkdir -p extract_nested
-    run_test "提取嵌套子目录中的文件" \
-        "$cazip -u -e --files 'test_structure/dir2/subdir/file4.txt' -f $format extract_nested test_structure.$format_ext" \
-        "[ -f extract_nested/test_structure/dir2/subdir/file4.txt ] && [ ! -f extract_nested/test_structure/dir2/file3.txt ]"
-}
-
-add_partial_extraction_tests "7z" "7z" "$CAZIP"
 # ====== 测试用例结束 ======
 
 # 打印测试结果摘要

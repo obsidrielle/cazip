@@ -7,12 +7,14 @@ use std::io::{self, BufReader, Read, Write};
 use std::path::Path;
 
 /// GZip codec implementation
-pub struct GzipCodec;
+pub struct GzipCodec {
+    compression_level: u8,
+}
 
 impl GzipCodec {
     /// Create a new GZip codec
     pub fn new() -> Self {
-        Self
+        Self { compression_level: 6 }
     }
 }
 
@@ -45,7 +47,7 @@ impl Codec for GzipCodec {
 
         let mut gz = GzBuilder::new()
             .filename(filename)
-            .write(f, Compression::default());
+            .write(f, flate2::Compression::new(self.compression_level as u32));
 
         let mut buffer = Vec::new();
         s.read_to_end(&mut buffer)?;
@@ -54,5 +56,13 @@ impl Codec for GzipCodec {
         gz.finish()?;
 
         Ok(())
+    }
+
+    fn compression_level_range(&self) -> (u8, u8) {
+        (0, 9)
+    }
+
+    fn set_compression_level(&mut self, level: u8) {
+        self.compression_level = level;
     }
 }

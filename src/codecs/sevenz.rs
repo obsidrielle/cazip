@@ -3,9 +3,9 @@ use crate::utils::{ensure_directory_exists, ensure_extension};
 use crate::Result;
 use crate::ZipError;
 use log::debug;
-use sevenz_rust2::{SevenZArchiveEntry, SevenZWriter};
 use std::fs::File;
 use std::path::Path;
+use sevenz_rust2::{SevenZArchiveEntry, SevenZWriter};
 
 /// 7-Zip codec implementation
 pub struct SevenZCodec {
@@ -71,4 +71,10 @@ impl Codec for SevenZCodec {
         sz_writer.finish()?;
         Ok(())
     }
+
+    fn compression_level_range(&self) -> (u8, u8) {
+        (0, 0)
+    }
+
+    fn set_compression_level(&mut self, _level: u8) {}
 }

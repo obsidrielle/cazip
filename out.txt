@@ -1,0 +1,430 @@
+[0;34m======================================[0m
+[0;34m7Z 格式压缩/解压功能测试[0m
+[0;34m======================================[0m
+[0;33m[INFO][0m 测试目录: /home/cagliostro/workspace/RustroverProjects/cazip/cazip_7z_test_1748203730
+[0;33m[INFO][0m 使用的 cazip: /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip
+
+[0;33m[INFO][0m 创建测试数据...
+[0;32m[SUCCESS][0m 测试数据准备完成
+
+[0;33m[TEST 1][0m 单文件压缩 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z single_file_ext.7z single_file.txt
+[0;32m[PASSED][0m 单文件压缩 (外部命令)
+
+[0;33m[TEST 2][0m 单文件解压 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_single_ext single_file_ext.7z
+[0;31m[FAILED][0m 单文件解压 (外部命令)
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 3][0m 目录压缩 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z test_dir.7z test_directory
+[0;32m[PASSED][0m 目录压缩 (外部命令)
+
+[0;33m[TEST 4][0m 目录解压 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_dir test_dir.7z
+[0;31m[FAILED][0m 目录解压 (外部命令)
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 5][0m 带密码的压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z -p test123 encrypted.7z single_file.txt
+[0;32m[PASSED][0m 带密码的压缩
+
+[0;33m[TEST 6][0m 带密码的解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z -p test123 extract_encrypted encrypted.7z
+[0;31m[FAILED][0m 带密码的解压
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 7][0m 大文件压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z large_file.7z large_file.bin
+[0;32m[PASSED][0m 大文件压缩
+
+[0;33m[TEST 8][0m 大文件解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_large large_file.7z
+[0;31m[FAILED][0m 大文件解压
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 9][0m 多文件压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z multi_files.7z single_file.txt test_directory/file1.txt
+[0;32m[PASSED][0m 多文件压缩
+
+[0;33m[TEST 10][0m 多文件解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_multi multi_files.7z
+[0;31m[FAILED][0m 多文件解压
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 11][0m 压缩特殊名称文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z special_names.7z "special filename with spaces.txt" "中文文件名.txt"
+[0;32m[PASSED][0m 压缩特殊名称文件
+
+[0;33m[TEST 12][0m 解压特殊名称文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_special special_names.7z
+[0;31m[FAILED][0m 解压特殊名称文件
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 13][0m 压缩中文内容文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z chinese_content.7z chinese_text.txt
+[0;32m[PASSED][0m 压缩中文内容文件
+
+[0;33m[TEST 14][0m 解压中文内容文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_chinese chinese_content.7z
+[0;31m[FAILED][0m 解压中文内容文件
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 15][0m 高压缩率文件测试
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z zeros.7z zeros.bin
+[0;32m[PASSED][0m 高压缩率文件测试
+[0;33m[SKIPPED][0m 分卷压缩测试 - 不支持
+
+[0;33m[TEST 16][0m UTF-16 文件压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z utf16.7z utf16_file.txt
+[0;32m[PASSED][0m UTF-16 文件压缩
+
+[0;33m[TEST 17][0m UTF-16 文件解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_utf16 utf16.7z
+[0;31m[FAILED][0m UTF-16 文件解压
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+[0;33m[SKIPPED][0m 文件列表功能 - 不支持
+
+[0;33m[TEST 18][0m 7z压缩等级1（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z --level 1 level1.7z single_file.txt
+[0;32m[PASSED][0m 7z压缩等级1（外部命令）
+
+[0;33m[TEST 19][0m 7z解压等级1压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_level1_7z level1.7z
+[0;31m[FAILED][0m 7z解压等级1压缩包（外部命令）
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 20][0m 7z压缩等级5（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z --level 5 level5.7z single_file.txt
+[0;32m[PASSED][0m 7z压缩等级5（外部命令）
+
+[0;33m[TEST 21][0m 7z解压等级5压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_level5_7z level5.7z
+[0;31m[FAILED][0m 7z解压等级5压缩包（外部命令）
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 22][0m 7z压缩等级9（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z --level 9 level9.7z single_file.txt
+[0;32m[PASSED][0m 7z压缩等级9（外部命令）
+
+[0;33m[TEST 23][0m 7z解压等级9压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f 7z extract_level9_7z level9.7z
+[0;31m[FAILED][0m 7z解压等级9压缩包（外部命令）
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;34m======================================[0m
+[0;33m======= 测试摘要 =======[0m
+总共测试: 23
+通过测试: 12
+失败测试: 11
+[0;31m有测试失败[0m
+
+[0;32m已清理测试目录[0m
+[0;34m======================================[0m
+[0;34m7Z 格式压缩/解压功能测试[0m
+[0;34m======================================[0m
+[0;33m[INFO][0m 测试目录: /home/cagliostro/workspace/RustroverProjects/cazip/cazip_7z_test_1748203812
+[0;33m[INFO][0m 使用的 cazip: /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip
+
+[0;33m[INFO][0m 创建测试数据...
+[0;32m[SUCCESS][0m 测试数据准备完成
+
+[0;33m[TEST 1][0m 单文件压缩 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z single_file_ext.7z single_file.txt
+[0;32m[PASSED][0m 单文件压缩 (外部命令)
+
+[0;33m[TEST 2][0m 单文件解压 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_single_ext single_file_ext.7z
+[0;32m[PASSED][0m 单文件解压 (外部命令)
+
+[0;33m[TEST 3][0m 目录压缩 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z test_dir.7z test_directory
+[0;32m[PASSED][0m 目录压缩 (外部命令)
+
+[0;33m[TEST 4][0m 目录解压 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_dir test_dir.7z
+[0;32m[PASSED][0m 目录解压 (外部命令)
+
+[0;33m[TEST 5][0m 带密码的压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z -p test123 encrypted.7z single_file.txt
+[0;32m[PASSED][0m 带密码的压缩
+
+[0;33m[TEST 6][0m 带密码的解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z -p test123 extract_encrypted encrypted.7z
+[0;32m[PASSED][0m 带密码的解压
+
+[0;33m[TEST 7][0m 大文件压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z large_file.7z large_file.bin
+[0;32m[PASSED][0m 大文件压缩
+
+[0;33m[TEST 8][0m 大文件解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_large large_file.7z
+[0;32m[PASSED][0m 大文件解压
+
+[0;33m[TEST 9][0m 多文件压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z multi_files.7z single_file.txt test_directory/file1.txt
+[0;32m[PASSED][0m 多文件压缩
+
+[0;33m[TEST 10][0m 多文件解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_multi multi_files.7z
+[0;32m[PASSED][0m 多文件解压
+
+[0;33m[TEST 11][0m 压缩特殊名称文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z special_names.7z "special filename with spaces.txt" "中文文件名.txt"
+[0;32m[PASSED][0m 压缩特殊名称文件
+
+[0;33m[TEST 12][0m 解压特殊名称文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_special special_names.7z
+[0;32m[PASSED][0m 解压特殊名称文件
+
+[0;33m[TEST 13][0m 压缩中文内容文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z chinese_content.7z chinese_text.txt
+[0;32m[PASSED][0m 压缩中文内容文件
+
+[0;33m[TEST 14][0m 解压中文内容文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_chinese chinese_content.7z
+[0;32m[PASSED][0m 解压中文内容文件
+
+[0;33m[TEST 15][0m 高压缩率文件测试
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z zeros.7z zeros.bin
+[0;32m[PASSED][0m 高压缩率文件测试
+[0;33m[SKIPPED][0m 分卷压缩测试 - 不支持
+
+[0;33m[TEST 16][0m UTF-16 文件压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z utf16.7z utf16_file.txt
+[0;32m[PASSED][0m UTF-16 文件压缩
+
+[0;33m[TEST 17][0m UTF-16 文件解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_utf16 utf16.7z
+[0;32m[PASSED][0m UTF-16 文件解压
+[0;33m[SKIPPED][0m 文件列表功能 - 不支持
+
+[0;33m[TEST 18][0m 7z压缩等级1（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z --level 1 level1.7z single_file.txt
+[0;32m[PASSED][0m 7z压缩等级1（外部命令）
+
+[0;33m[TEST 19][0m 7z解压等级1压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_level1_7z level1.7z
+[0;32m[PASSED][0m 7z解压等级1压缩包（外部命令）
+
+[0;33m[TEST 20][0m 7z压缩等级5（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z --level 5 level5.7z single_file.txt
+[0;32m[PASSED][0m 7z压缩等级5（外部命令）
+
+[0;33m[TEST 21][0m 7z解压等级5压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_level5_7z level5.7z
+[0;32m[PASSED][0m 7z解压等级5压缩包（外部命令）
+
+[0;33m[TEST 22][0m 7z压缩等级9（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f 7z --level 9 level9.7z single_file.txt
+[0;32m[PASSED][0m 7z压缩等级9（外部命令）
+
+[0;33m[TEST 23][0m 7z解压等级9压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f 7z extract_level9_7z level9.7z
+[0;32m[PASSED][0m 7z解压等级9压缩包（外部命令）
+
+[0;34m======================================[0m
+[0;33m======= 测试摘要 =======[0m
+总共测试: 23
+通过测试: 23
+失败测试: 0
+[0;32m所有测试通过![0m
+
+[0;32m已清理测试目录[0m
+[0;36m======================================[0m
+[0;36mXZ 格式压缩/解压功能测试[0m
+[0;36m======================================[0m
+[0;33m[INFO][0m 测试目录: /home/cagliostro/workspace/RustroverProjects/cazip/cazip_xz_test_1748203877
+[0;33m[INFO][0m 使用的 cazip: /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip
+
+[0;33m[INFO][0m 创建测试数据...
+[0;32m[SUCCESS][0m 测试数据准备完成
+
+[0;33m[TEST 1][0m 单文件压缩 (内部实现)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz single_file.xz single_file.txt
+[0;32m[PASSED][0m 单文件压缩 (内部实现)
+
+[0;33m[TEST 2][0m 单文件解压 (内部实现)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f xz extract_single single_file.xz
+[0;32m[PASSED][0m 单文件解压 (内部实现)
+
+[0;33m[TEST 3][0m 单文件压缩 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f xz single_file_ext.xz single_file.txt
+[0;32m[PASSED][0m 单文件压缩 (外部命令)
+
+[0;33m[TEST 4][0m 单文件解压 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_single_ext single_file_ext.xz
+Uncompressed tar file: single_file_ext
+[0;31m[FAILED][0m 单文件解压 (外部命令)
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 5][0m 目录压缩为tar.xz (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f xz test_dir.tar.xz test_directory
+[0;32m[PASSED][0m 目录压缩为tar.xz (外部命令)
+
+[0;33m[TEST 6][0m tar.xz目录解压 (外部命令)
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_dir test_dir.tar.xz
+[0;32m[PASSED][0m tar.xz目录解压 (外部命令)
+
+[0;33m[TEST 7][0m 压缩已存在的tar文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz test_content.tar.xz test_content.tar
+[0;32m[PASSED][0m 压缩已存在的tar文件
+
+[0;33m[TEST 8][0m 解压tar.xz到tar文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_tar test_content.tar.xz
+[0;32m[PASSED][0m 解压tar.xz到tar文件
+
+[0;33m[TEST 9][0m 大文件压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz large_file.xz large_file.bin
+[0;32m[PASSED][0m 大文件压缩
+
+[0;33m[TEST 10][0m 大文件解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_large large_file.xz
+Uncompressed tar file: large_file
+[0;32m[PASSED][0m 大文件解压
+
+[0;33m[TEST 11][0m 多线程压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz -d mt_compress.xz large_file.bin
+[0;31m[FAILED][0m 多线程压缩
+[0;31m[ERROR][0m 命令执行失败 (状态码: 2)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 12][0m 高压缩率文件测试
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz zeros.xz zeros.bin
+[0;32m[PASSED][0m 高压缩率文件测试
+[0;33m[SKIPPED][0m 解压到标准输出测试 - 不支持
+[0;33m[SKIPPED][0m 压缩级别 1 测试 - 不支持
+[0;33m[SKIPPED][0m 压缩级别 3 测试 - 不支持
+[0;33m[SKIPPED][0m 压缩级别 6 测试 - 不支持
+[0;33m[SKIPPED][0m 压缩级别 9 测试 - 不支持
+
+[0;33m[TEST 13][0m 使用.txz扩展名压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f xz test_dir.txz test_directory
+[0;32m[PASSED][0m 使用.txz扩展名压缩
+
+[0;33m[TEST 14][0m 解压.txz文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_txz test_dir.txz
+[0;32m[PASSED][0m 解压.txz文件
+[0;33m[SKIPPED][0m 文件列表功能 - 不支持
+
+[0;33m[TEST 15][0m 压缩保留原始文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz preserve_test.xz preserve_test.txt
+[0;32m[PASSED][0m 压缩保留原始文件
+
+[0;33m[TEST 16][0m 多文件压缩
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz multi_files.xz single_file.txt large_file.bin
+[0;32m[PASSED][0m 多文件压缩
+
+[0;33m[TEST 17][0m 多文件解压
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_multi multi_files.xz
+Uncompressed tar file: multi_files
+[0;32m[PASSED][0m 多文件解压
+
+[0;33m[INFO][0m 创建部分提取测试的数据...
+[0;32m[SUCCESS][0m 部分提取测试数据创建完成
+
+[0;33m[TEST 18][0m 提取单个文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip -e --files test_structure/file1.txt -f xz extract_single_file test_structure.tar.xz
+[0;31m[FAILED][0m 提取单个文件
+[0;31m[ERROR][0m 命令执行失败 (状态码: 2)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 19][0m 提取特定目录
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip -e --files 'test_structure/dir1' -f xz extract_specific_dir test_structure.tar.xz
+[0;31m[FAILED][0m 提取特定目录
+[0;31m[ERROR][0m 命令执行失败 (状态码: 2)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 20][0m 提取多个文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip -e -f xz extract_multiple_files test_structure.tar.xz --files test_structure/file1.txt,test_structure/dir2/file3.txt
+[0;31m[FAILED][0m 提取多个文件
+[0;31m[ERROR][0m 命令执行失败 (状态码: 2)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 21][0m 提取嵌套子目录中的文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip -e --files 'test_structure/dir2/subdir/file4.txt' -f xz extract_nested test_structure.tar.xz
+[0;31m[FAILED][0m 提取嵌套子目录中的文件
+[0;31m[ERROR][0m 命令执行失败 (状态码: 2)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 22][0m 尝试提取不存在的文件
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip -e --files 'nonexistent_file.txt' -f xz extract_error test_structure.tar.xz 2>&1 | grep -q 'Error\|错误\|not found'
+[0;31m[FAILED][0m 尝试提取不存在的文件
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+
+[0;33m[TEST 23][0m xz压缩等级1（native）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz --level 1 level1.xz single_file.txt
+[0;32m[PASSED][0m xz压缩等级1（native）
+
+[0;33m[TEST 24][0m xz解压等级1压缩包（native）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f xz extract_level1_xz level1.xz
+[0;32m[PASSED][0m xz解压等级1压缩包（native）
+
+[0;33m[TEST 25][0m xz压缩等级5（native）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz --level 5 level5.xz single_file.txt
+[0;32m[PASSED][0m xz压缩等级5（native）
+
+[0;33m[TEST 26][0m xz解压等级5压缩包（native）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f xz extract_level5_xz level5.xz
+[0;32m[PASSED][0m xz解压等级5压缩包（native）
+
+[0;33m[TEST 27][0m xz压缩等级9（native）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -f xz --level 9 level9.xz single_file.txt
+[0;32m[PASSED][0m xz压缩等级9（native）
+
+[0;33m[TEST 28][0m xz解压等级9压缩包（native）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -f xz extract_level9_xz level9.xz
+[0;32m[PASSED][0m xz解压等级9压缩包（native）
+
+[0;33m[TEST 29][0m xz压缩等级1（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f xz --level 1 level1_ext.xz single_file.txt
+[0;32m[PASSED][0m xz压缩等级1（外部命令）
+
+[0;33m[TEST 30][0m xz解压等级1压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_level1_xz_ext level1_ext.xz
+Uncompressed tar file: level1_ext
+[0;31m[FAILED][0m xz解压等级1压缩包（外部命令）
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 31][0m xz压缩等级5（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f xz --level 5 level5_ext.xz single_file.txt
+[0;32m[PASSED][0m xz压缩等级5（外部命令）
+
+[0;33m[TEST 32][0m xz解压等级5压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_level5_xz_ext level5_ext.xz
+Uncompressed tar file: level5_ext
+[0;31m[FAILED][0m xz解压等级5压缩包（外部命令）
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;33m[TEST 33][0m xz压缩等级9（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip compress -e -f xz --level 9 level9_ext.xz single_file.txt
+[0;32m[PASSED][0m xz压缩等级9（外部命令）
+
+[0;33m[TEST 34][0m xz解压等级9压缩包（外部命令）
+[0;33m[CMD][0m /home/cagliostro/workspace/RustroverProjects/cazip/target/debug/ca-zip extract -e -f xz extract_level9_xz_ext level9_ext.xz
+Uncompressed tar file: level9_ext
+[0;31m[FAILED][0m xz解压等级9压缩包（外部命令）
+[0;31m[ERROR][0m 命令执行失败 (状态码: 1)
+[0;31m[ERROR][0m 验证失败 (状态码: 1)
+
+[0;36m======================================[0m
+[0;33m======= 测试摘要 =======[0m
+总共测试: 34
+通过测试: 24
+失败测试: 10
+[0;31m有测试失败[0m
+

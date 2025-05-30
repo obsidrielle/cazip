@@ -61,6 +61,9 @@ pub trait Codec {
     
     /// Compress files into an archive
     fn compress(&mut self, source: &[&Path], target: &Path, _exclude: Option<&[&Path]>) -> Result<()>;
+
+    fn compression_level_range(&self) -> (u8, u8);
+    fn set_compression_level(&mut self, _level: u8);
 }
 
 /// Factory for creating codec instances
@@ -70,6 +73,7 @@ pub struct CodecFactory {
     password: Option<String>,
     volume_size: Option<usize>,
     use_external: bool,
+    level: Option<u8>,
 }
 
 impl CodecFactory {
@@ -80,6 +84,7 @@ impl CodecFactory {
         password: Option<String>,
         volume_size: Option<usize>,
         use_external: bool,
+        level: Option<u8>,
     ) -> Self {
         Self {
             format,
@@ -87,6 +92,7 @@ impl CodecFactory {
             password,
             volume_size,
             use_external,
+            level,
         }
     }
 
@@ -109,14 +115,27 @@ impl CodecFactory {
                     .as_deref()
                     .map(CompressionMethod::from_str)
                     .unwrap_or_default();
-
-                Ok(Box::new(ZipCodec::new(method, self.password.clone())))
+                let mut codec = ZipCodec::new(method, self.password.clone());
+                if let Some(lv) = self.level {
+                    codec.set_compression_level(lv);
+                }
+                Ok(Box::new(codec))
             },
-            Format::Gz => Ok(Box::new(GzipCodec::new())),
+            Format::Gz => {
+                let mut codec = GzipCodec::new();
+                if let Some(lv) = self.level {
+                    codec.set_compression_level(lv);
+                }
+                Ok(Box::new(codec))
+            },
             Format::SevenZ => Ok(Box::new(SevenZCodec::new(self.password.clone()))),
             Format::Xz => {
                 // Use 12 threads by default
-                Ok(Box::new(XzCodec::new(0, 12)))
+                let mut codec = XzCodec::new(self.level.unwrap_or(6) as u32, 12);
+                if let Some(lv) = self.level {
+                    codec.set_compression_level(lv);
+                }
+                Ok(Box::new(codec))
             },
         }
     }

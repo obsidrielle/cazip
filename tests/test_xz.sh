@@ -102,75 +102,75 @@ echo -e "${GREEN}[SUCCESS]${NC} 测试数据准备完成"
 
 # 测试用例1: 单文件压缩 (内部实现)
 run_test "单文件压缩 (内部实现)" \
-    "$CAZIP -f xz single_file.xz single_file.txt" \
+    "$CAZIP compress -f xz single_file.xz single_file.txt" \
     "[ -f single_file.xz ] && [ -s single_file.xz ]"
 
 # 测试用例2: 单文件解压 (内部实现)
 mkdir -p extract_single
 run_test "单文件解压 (内部实现)" \
-    "$CAZIP -u -f xz extract_single single_file.xz" \
+    "$CAZIP extract -f xz extract_single single_file.xz" \
     "[ -f extract_single/single_file.txt ] && diff single_file.txt extract_single/single_file.txt"
 
 # 测试用例3: 单文件压缩 (外部命令)
 run_test "单文件压缩 (外部命令)" \
-    "$CAZIP -e -f xz single_file_ext.xz single_file.txt" \
+    "$CAZIP compress -e -f xz single_file_ext.xz single_file.txt" \
     "[ -f single_file_ext.xz ] && [ -s single_file_ext.xz ]"
 
 # 测试用例4: 单文件解压 (外部命令)
 mkdir -p extract_single_ext
 run_test "单文件解压 (外部命令)" \
-    "$CAZIP -e -u -f xz extract_single_ext single_file_ext.xz" \
+    "$CAZIP extract -e -f xz extract_single_ext single_file_ext.xz" \
     "[ -f extract_single_ext/single_file.txt ] && diff single_file.txt extract_single_ext/single_file.txt"
 
 # 测试用例5: tar创建并压缩 (外部命令)
 run_test "目录压缩为tar.xz (外部命令)" \
-    "$CAZIP -e -f xz test_dir.tar.xz test_directory" \
+    "$CAZIP compress -e -f xz test_dir.tar.xz test_directory" \
     "[ -f test_dir.tar.xz ] && [ -s test_dir.tar.xz ]"
 
 # 测试用例6: tar.xz解压 (外部命令)
 mkdir -p extract_dir
 run_test "tar.xz目录解压 (外部命令)" \
-    "$CAZIP -e -u -f xz extract_dir test_dir.tar.xz" \
+    "$CAZIP extract -e -f xz extract_dir test_dir.tar.xz" \
     "[ -d extract_dir/test_directory ] && [ -f extract_dir/test_directory/file1.txt ]"
 
 # 测试用例7: 压缩已存在的tar文件
 run_test "压缩已存在的tar文件" \
-    "$CAZIP -f xz test_content.tar.xz test_content.tar" \
+    "$CAZIP compress -f xz test_content.tar.xz test_content.tar" \
     "[ -f test_content.tar.xz ] && [ -s test_content.tar.xz ]"
 
 # 测试用例8: 解压tar.xz文件到tar
 mkdir -p extract_tar
 run_test "解压tar.xz到tar文件" \
-    "$CAZIP -u -f xz extract_tar test_content.tar.xz" \
+    "$CAZIP extract -e -f xz extract_tar test_content.tar.xz" \
     "[ -f extract_tar/test_content.tar ] && tar -tf extract_tar/test_content.tar > /dev/null"
 
 # 测试用例9: 压缩大文件
 run_test "大文件压缩" \
-    "$CAZIP -f xz large_file.xz large_file.bin" \
+    "$CAZIP compress -f xz large_file.xz large_file.bin" \
     "[ -f large_file.xz ] && [ -s large_file.xz ]"
 
 # 测试用例10: 解压大文件
 mkdir -p extract_large
 run_test "大文件解压" \
-    "$CAZIP -u -f xz extract_large large_file.xz" \
+    "$CAZIP extract -e -f xz extract_large large_file.xz" \
     "[ -f extract_large/large_file.bin ] && diff large_file.bin extract_large/large_file.bin"
 
 # 测试用例11: 多线程压缩 (如果支持)
 # XZ 编解码器应该支持多线程压缩
 run_test "多线程压缩" \
-    "$CAZIP -f xz -d mt_compress.xz large_file.bin" \
+    "$CAZIP compress -f xz -d mt_compress.xz large_file.bin" \
     "[ -f mt_compress.xz ] && [ -s mt_compress.xz ]"
 
 # 测试用例12: 高压缩率测试 (全零文件)
 run_test "高压缩率文件测试" \
-    "$CAZIP -f xz zeros.xz zeros.bin" \
+    "$CAZIP compress -f xz zeros.xz zeros.bin" \
     "[ -f zeros.xz ] && [ \$(stat -c%s zeros.xz) -lt \$(stat -c%s zeros.bin) ]"
 
 # 测试用例13: 解压到标准输出 (如果支持)
 # 很多xz实现支持解压到标准输出
-if $CAZIP -u -f xz - single_file.xz > /dev/null 2>&1; then
+if $CAZIP -f xz - single_file.xz > /dev/null 2>&1; then
     run_test "解压到标准输出" \
-        "$CAZIP -u -f xz - single_file.xz > stdout_output.txt" \
+        "$CAZIP -f xz - single_file.xz > stdout_output.txt" \
         "[ -s stdout_output.txt ] && diff single_file.txt stdout_output.txt"
 else
     echo -e "${YELLOW}[SKIPPED]${NC} 解压到标准输出测试 - 不支持"
@@ -190,12 +190,12 @@ done
 
 # 测试用例15: 使用.txz扩展名 (tar+xz的简写)
 run_test "使用.txz扩展名压缩" \
-    "$CAZIP -e -f xz test_dir.txz test_directory" \
+    "$CAZIP compress -e -f xz test_dir.txz test_directory" \
     "[ -f test_dir.txz ] && [ -s test_dir.txz ]"
 
 mkdir -p extract_txz
 run_test "解压.txz文件" \
-    "$CAZIP -e -u -f xz extract_txz test_dir.txz" \
+    "$CAZIP extract -e -f xz extract_txz test_dir.txz" \
     "[ -d extract_txz/test_directory ]"
 
 # 测试用例16: 文件列表功能 (如果支持)
@@ -211,18 +211,18 @@ fi
 if [ -f single_file.txt ]; then
     cp single_file.txt preserve_test.txt
     run_test "压缩保留原始文件" \
-        "$CAZIP -f xz preserve_test.xz preserve_test.txt" \
+        "$CAZIP compress -f xz preserve_test.xz preserve_test.txt" \
         "[ -f preserve_test.xz ] && [ -f preserve_test.txt ]"
 fi
 
 # 测试用例18: 多文件压缩 (预期会创建tar.xz)
 run_test "多文件压缩" \
-    "$CAZIP -f xz multi_files.xz single_file.txt large_file.bin" \
+    "$CAZIP compress -f xz multi_files.xz single_file.txt large_file.bin" \
     "[ -f multi_files.xz ] && [ -s multi_files.xz ]"
 
 mkdir -p extract_multi
 run_test "多文件解压" \
-    "$CAZIP -u -f xz extract_multi multi_files.xz" \
+    "$CAZIP extract -e -f xz extract_multi multi_files.xz" \
     "[ -f extract_multi/single_file.txt ] && [ -f extract_multi/large_file.bin ]"
 
 add_partial_extraction_tests() {
@@ -250,14 +250,14 @@ add_partial_extraction_tests() {
     # 压缩测试目录
     case $format in
         "zip")
-            $cazip -f $format -e test_structure.$format_ext test_structure
+            $cazip compress -f $format -e test_structure.$format_ext test_structure
             ;;
         "7z")
-            $cazip -e -f $format test_structure.$format_ext test_structure
+            $cazip compress -e -f $format test_structure.$format_ext test_structure
             ;;
         "xz"|"gz")
             # 对于xz和gz，需要先创建tar文件
-            $cazip -e -f $format test_structure.tar.$format_ext test_structure
+            $cazip compress-e -f $format test_structure.tar.$format_ext test_structure
             ;;
     esac
 
@@ -266,42 +266,101 @@ add_partial_extraction_tests() {
     # 测试用例：提取单个文件
     mkdir -p extract_single_file
     run_test "提取单个文件" \
-        "$cazip -u -e --files test_structure/file1.txt -f $format extract_single_file test_structure.tar.$format_ext" \
+        "$cazip extract -e --files test_structure/file1.txt -f $format extract_single_file test_structure.tar.$format_ext" \
         "[ -f extract_single_file/test_structure/file1.txt ] && [ ! -f extract_single_file/test_structure/dir1/file2.txt ]"
 
     # 测试用例：提取特定目录
     mkdir -p extract_specific_dir
     run_test "提取特定目录" \
-        "$cazip -u -e --files 'test_structure/dir1' -f $format extract_specific_dir test_structure.tar.$format_ext" \
+        "$cazip extract -e --files 'test_structure/dir1' -f $format extract_specific_dir test_structure.tar.$format_ext" \
         "[ -d extract_specific_dir/test_structure/dir1 ] && [ -f extract_specific_dir/test_structure/dir1/file2.txt ] && [ ! -f extract_specific_dir/test_structure/file1.txt ]"
 
     # 测试用例：提取多个文件
     mkdir -p extract_multiple_files
     run_test "提取多个文件" \
-        "$cazip -u -e -f $format extract_multiple_files test_structure.tar.$format_ext --files test_structure/file1.txt,test_structure/dir2/file3.txt" \
+        "$cazip extract -e -f $format extract_multiple_files test_structure.tar.$format_ext --files test_structure/file1.txt,test_structure/dir2/file3.txt" \
         "[ -f extract_multiple_files/test_structure/file1.txt ] && [ -f extract_multiple_files/test_structure/dir2/file3.txt ] && [ ! -f extract_multiple_files/test_structure/dir1/file2.txt ]"
 
     # 测试用例：提取使用通配符（仅适用于支持通配符的格式）
     if [ "$format" = "zip" ] || [ "$format" = "7z" ]; then
         mkdir -p extract_wildcard
         run_test "使用通配符提取文件" \
-            "$cazip -u -e --files 'test_structure/*.txt' -f $format extract_wildcard test_structure.tar.$format_ext" \
+            "$cazip extract -e --files 'test_structure/*.txt' -f $format extract_wildcard test_structure.tar.$format_ext" \
             "[ -f extract_wildcard/test_structure/file1.txt ] && [ ! -f extract_wildcard/test_structure/binary1.bin ]"
     fi
 
     # 测试用例：提取子目录中的文件
     mkdir -p extract_nested
     run_test "提取嵌套子目录中的文件" \
-        "$cazip -u -e --files 'test_structure/dir2/subdir/file4.txt' -f $format extract_nested test_structure.tar.$format_ext" \
+        "$cazip extract -e --files 'test_structure/dir2/subdir/file4.txt' -f $format extract_nested test_structure.tar.$format_ext" \
         "[ -f extract_nested/test_structure/dir2/subdir/file4.txt ] && [ ! -f extract_nested/test_structure/dir2/file3.txt ]"
 
     # 测试用例：尝试提取不存在的文件（应该给出错误）
     run_test "尝试提取不存在的文件" \
-        "$cazip -u -e --files 'nonexistent_file.txt' -f $format extract_error test_structure.tar.$format_ext 2>&1 | grep -q 'Error\|错误\|not found'" \
+        "$cazip extract -e --files 'nonexistent_file.txt' -f $format extract_error test_structure.tar.$format_ext 2>&1 | grep -q 'Error\|错误\|not found'" \
         "[ $? -eq 0 ]"
 }
 
 add_partial_extraction_tests "xz" "xz" "$CAZIP"
+
+# ====== 压缩等级测试 ======
+
+# native模式
+run_test "xz压缩等级1（native）" \
+    "$CAZIP compress -f xz --level 1 level1.xz single_file.txt" \
+    "[ -f level1.xz ] && [ -s level1.xz ]"
+
+mkdir -p extract_level1_xz
+run_test "xz解压等级1压缩包（native）" \
+    "$CAZIP extract -f xz extract_level1_xz level1.xz" \
+    "[ -f extract_level1_xz/single_file.txt ] && diff single_file.txt extract_level1_xz/single_file.txt"
+
+run_test "xz压缩等级5（native）" \
+    "$CAZIP compress -f xz --level 5 level5.xz single_file.txt" \
+    "[ -f level5.xz ] && [ -s level5.xz ]"
+
+mkdir -p extract_level5_xz
+run_test "xz解压等级5压缩包（native）" \
+    "$CAZIP extract -f xz extract_level5_xz level5.xz" \
+    "[ -f extract_level5_xz/single_file.txt ] && diff single_file.txt extract_level5_xz/single_file.txt"
+
+run_test "xz压缩等级9（native）" \
+    "$CAZIP compress -f xz --level 9 level9.xz single_file.txt" \
+    "[ -f level9.xz ] && [ -s level9.xz ]"
+
+mkdir -p extract_level9_xz
+run_test "xz解压等级9压缩包（native）" \
+    "$CAZIP extract -f xz extract_level9_xz level9.xz" \
+    "[ -f extract_level9_xz/single_file.txt ] && diff single_file.txt extract_level9_xz/single_file.txt"
+
+# 外部命令模式
+run_test "xz压缩等级1（外部命令）" \
+    "$CAZIP compress -e -f xz --level 1 level1_ext.xz single_file.txt" \
+    "[ -f level1_ext.xz ] && [ -s level1_ext.xz ]"
+
+mkdir -p extract_level1_xz_ext
+run_test "xz解压等级1压缩包（外部命令）" \
+    "$CAZIP extract -e -f xz extract_level1_xz_ext level1_ext.xz" \
+    "[ -f extract_level1_xz_ext/single_file.txt ] && diff single_file.txt extract_level1_xz_ext/single_file.txt"
+
+run_test "xz压缩等级5（外部命令）" \
+    "$CAZIP compress -e -f xz --level 5 level5_ext.xz single_file.txt" \
+    "[ -f level5_ext.xz ] && [ -s level5_ext.xz ]"
+
+mkdir -p extract_level5_xz_ext
+run_test "xz解压等级5压缩包（外部命令）" \
+    "$CAZIP extract -e -f xz extract_level5_xz_ext level5_ext.xz" \
+    "[ -f extract_level5_xz_ext/single_file.txt ] && diff single_file.txt extract_level5_xz_ext/single_file.txt"
+
+run_test "xz压缩等级9（外部命令）" \
+    "$CAZIP compress -e -f xz --level 9 level9_ext.xz single_file.txt" \
+    "[ -f level9_ext.xz ] && [ -s level9_ext.xz ]"
+
+mkdir -p extract_level9_xz_ext
+run_test "xz解压等级9压缩包（外部命令）" \
+    "$CAZIP extract -e -f xz extract_level9_xz_ext level9_ext.xz" \
+    "[ -f extract_level9_xz_ext/single_file.txt ] && diff single_file.txt extract_level9_xz_ext/single_file.txt"
+
 # ====== 测试用例结束 ======
 
 # 打印测试结果摘要
